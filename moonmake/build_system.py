@@ -118,10 +118,9 @@ bbut you will not receive src :D
 """
 def discover(directory: str, endswith: str) -> list[str]:
     base_path = Path(directory).resolve()
-    file_list: list[str] = []
-    for path in base_path.rglob(f"*{endswith}"):
-        file_list.append(path.relative_to(base_path).as_posix())  
-    
+    file_list: list[str] = list([
+        path.relative_to(base_path).as_posix() 
+        for path in base_path.rglob(f"*{endswith}")])
     return file_list
 """
 this is a simple function used for adding a new dependency or list of dependencies into a queue of compiling
@@ -133,7 +132,6 @@ extra_dependencies are just in case you dont want to check anything and you just
 def watch(build:list[str],need:list[str],command:str,extra_dependencies:list[str]=[],capture_output=True, text=True):
     global queueBuilds
     build_list=build
-  
     queueBuilds.append(Build(build,need,command,extra_dependencies=extra_dependencies,capture_output=True, text=True))
 def get_dir(p:str):
     cwd=getcwd()
@@ -142,8 +140,6 @@ def get_dir(p:str):
 
 def compile_all():
     global queueBuilds
-    total_compiled=0
-    for b in reversed(queueBuilds):
-        total_compiled+=b.compile()
+    total_compiled=sum([b.compile() for b in reversed(queueBuilds)])
     if total_compiled is 0:
         print("Everything seems to be on date")
