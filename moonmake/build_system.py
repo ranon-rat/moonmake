@@ -21,6 +21,7 @@ def execute_command(command:str,capture_output=True, text=True):
     result=subprocess.run(command.split(" "),capture_output=capture_output, text=text)
     if result.stderr is not "":
         f(result.stderr)
+        exit()
     if result.stdout is not "":
         f(result.stdout)
 
@@ -73,7 +74,8 @@ class Build():
             recompile
         return recompile
       
-    def compile(self):
+    def compile(self)->int:
+        total_compiled=0
         for (i,bf) in enumerate(self.build):
             build_command=self.command.replace("$@",bf).replace("$?"," ".join(self.extra_dependencies))
             recompile=self.check_on_extra(bf)
@@ -84,10 +86,13 @@ class Build():
                 build_command=build_command.replace("$<",self.dependencies[i])
                 recompile|=self.compile_each(bf,self.dependencies[i],i)                
             if not recompile: continue
+            total_compiled+=1
             d=dirname(bf)
             if d is not "":
                 makedirs(d,exist_ok=True)
-            execute_command(build_command,capture_output=self.capture_output,text=self.text)        
+            
+            execute_command(build_command,capture_output=self.capture_output,text=self.text)     
+        return total_compiled 
 #something for internal usage
 def call_dependency(dependencies:list[str]):
     global queueBuilds
@@ -114,7 +119,6 @@ bbut you will not receive src :D
 def discover(directory: str, endswith: str) -> list[str]:
     base_path = Path(directory).resolve()
     file_list: list[str] = []
-    
     for path in base_path.rglob(f"*{endswith}"):
         file_list.append(path.relative_to(base_path).as_posix())  
     
@@ -134,5 +138,8 @@ def watch(build:list[str],need:list[str],command:str,extra_dependencies:list[str
 
 def compile_all():
     global queueBuilds
+    total_compiled=0
     for b in reversed(queueBuilds):
-        b.compile()
+        total_compiled+=b.compile()
+    if total_compiled is 0:
+        print("Everything seems to be on date")
