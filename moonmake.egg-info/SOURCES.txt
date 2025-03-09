@@ -1,9 +1,0 @@
-LICENSE
-README.md
-setup.py
-moonmake/__init__.py
-moonmake/build_system.py
-moonmake.egg-info/PKG-INFO
-moonmake.egg-info/SOURCES.txt
-moonmake.egg-info/dependency_links.txt
-moonmake.egg-info/top_level.txt
