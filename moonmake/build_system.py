@@ -82,7 +82,7 @@ class Build():
                 recompile|=self.compile_all(bf)
             if "$<" in build_command :# we need pass the argument of each index
                 build_command=build_command.replace("$<",self.dependencies[i])
-                recompile|=self.compile_each(bf,self.dependencies[i])                
+                recompile|=self.compile_each(bf,self.dependencies[i],i)                
             if not recompile: continue
             d=dirname(bf)
             if d is not "":
