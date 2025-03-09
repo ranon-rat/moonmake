@@ -4,11 +4,12 @@ A simple package manager and build system for c++ and c projects.
 
 Its simple, it doesnt requires that many things, and its as easy to install as this
 
-"bash
-git install github.com/ranon-rat/MoonMake
-cd MoonMake
+
+```bash
+git install github.com/ranon-rat/moonmake
+cd moonmake
 pip3 install .
-"
+```
 
 ## motivations for this
 
