@@ -98,15 +98,26 @@ def call_dependency(dependencies:list[str]):
 """
 this will return you a list of files that are in the directory that you specified
 the ends with its important because with this you can filter the files that you want
+it will return you the directions of the files 
+but they will be cleared, so you if you are calling something from a directory that looks like this
+src
+ |-c.cpp
+ |--a
+   |-a.cpp
+   |-b.cpp
+you will receive something like this
+a/a.cpp
+a/b.cpp
+c.cpp
+bbut you will not receive src :D
 """
-def discover(directory:str,endswith:str)->list[str]:
-    file_list:list[str]=[]
-    for root, dirs, files in Path(directory).walk(): 
-        for file in files:
-            rf=join(root,file)
-            if not rf.endswith(endswith):
-                continue
-            file_list.append(rf)
+def discover(directory: str, endswith: str) -> list[str]:
+    base_path = Path(directory).resolve()
+    file_list: list[str] = []
+    
+    for path in base_path.rglob(f"*{endswith}"):
+        file_list.append(path.relative_to(base_path).as_posix())  
+    
     return file_list
 """
 this is a simple function used for adding a new dependency or list of dependencies into a queue of compiling
