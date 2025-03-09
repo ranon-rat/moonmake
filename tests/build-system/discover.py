@@ -1,6 +1,7 @@
 import moonmake as mmake
-from os.path import join,dirname,abspath
-dir_path = dirname(abspath(__file__))
+from os.path import join
+
+dir_path =mmake.get_dir(__file__)
 # Lista los archivos en el directorio
 if __name__=="__main__":
     example_files=list([join("example",f) for f in (mmake.discover(join(dir_path,"example"),".cpp"))])

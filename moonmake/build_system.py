@@ -1,6 +1,6 @@
 from pathlib import Path
-from os.path import join,getmtime,dirname
-from os import makedirs
+from os.path import join,getmtime,dirname,abspath
+from os import makedirs,getcwd,sep
 from re import match
 import subprocess
 
@@ -135,6 +135,10 @@ def watch(build:list[str],need:list[str],command:str,extra_dependencies:list[str
     build_list=build
   
     queueBuilds.append(Build(build,need,command,extra_dependencies=extra_dependencies,capture_output=True, text=True))
+def get_dir(p:str):
+    cwd=getcwd()
+    raw_dir= dirname(abspath(p))
+    return join(".",*raw_dir.split(sep)[len(cwd.split(sep)):])
 
 def compile_all():
     global queueBuilds
