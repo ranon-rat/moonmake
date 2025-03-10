@@ -16,7 +16,7 @@ if __name__=="__main__":
     CPP_VERSION="14"
     INCLUDE=f"-I{join(dir_path,"src","include")}  -I{join(".",moonmake,"dependencies","headers")} "
     FLAGS=f"-Wall -Wextra -std=c++${CPP_VERSION}"
-    LINK=f"-L{join(".",dir_path,"moonmake","lib")} -L{join(".","moonmake","dependencies","lib")}"   
+    LINK=f"-L{join(".",dir_path,moonmake,"lib")} -L{join(".",moonmake,"dependencies","lib")}"   
 
     extension=mmake.get_extension()
     main=mmake.Builder()
@@ -36,6 +36,7 @@ if __name__=="__main__":
     main.watch([lib_static],lib_obj,"ar rcs $@ $^")
     #we generate the object files of thebinaries
     main.watch(lib_obj,lib_files,f"g++ -c $< -o $@ {FLAGS} {INCLUDE}")
+
     main.compile_all()
 """
 def build_folder(route:str,readme:str):
