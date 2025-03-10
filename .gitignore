@@ -3,3 +3,6 @@
 *.d
 build/
 *.egg-info
+moonmake/__pycache__/
+tests/*.md
+*.md
