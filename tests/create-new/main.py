@@ -14,15 +14,15 @@ if __name__=="__main__":
     moonmake=".moonmake"
     
     CPP_VERSION="14"
-    INCLUDE=f"-I{join(dir_path,"src","include")}  -I{join(".",moonmake,"dependencies","headers")} "
+    INCLUDE=f"{mmake.join_with_flag([join(".",moonmake,"dependencies","headers")],"-I")} -I{join(dir_path,"src","include")}"
     mmake.discover()
     FLAGS=f"-Wall -Wextra -std=c++${CPP_VERSION}"
-    LINK=f"-L{join(".",dir_path,moonmake,"lib")} -L{join(".",moonmake,"dependencies","lib")}"   
+    LINK=f"{mmake.join_with_flag([join(".",moonmake,"dependencies","lib")],"-L")} -L{join(".",dir_path,moonmake,"lib")}"
 
     extension=mmake.get_extension()
     main=mmake.Builder()
     static_a_files=mmake.Builder(join(".",moonmake,"dependencies","lib"),".a")
-    dir_a_files=[join(".",moonmake,"dependencies","lib",a) for a in static_a_files]
+    dir_a_files=mmake.change_extension(static_a_files,join(".",moonmake,"dependencies","lib",a))
     STATIC_LIBRARY=" ".join([f"-l{a.replace("lib","").replace(".a","")}" for a in static_a_files])
 
     target_files=list([f for f in  mmake.discover(join(dir_path,"src","target"),".cpp")])
