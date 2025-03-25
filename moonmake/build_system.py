@@ -3,7 +3,11 @@ from os.path import join,getmtime,dirname,abspath
 from os import makedirs,getcwd,sep
 from re import match
 import subprocess
-
+def get_dir(p:str):
+    cwd=getcwd()
+    raw_dir= dirname(abspath(p))
+    return join(".",*raw_dir.split(sep)[len(cwd.split(sep)):])
+    
 # $^-> all $< each of the dependencies $@ this one $?
 # we get the date of the file, just for checking if there is any new version
 def get_date_file(path:str)->float:
@@ -11,13 +15,13 @@ def get_date_file(path:str)->float:
     except: return -1
 # then we need to verify if something contains this
 def execute_command(command:str,show_command=True):
-
+    command=command.replace("\\","/")
     if command is "":return 
     f=lambda x: x
     if show_command:
         print(command)
         f=lambda x: print(x)    
-    result=subprocess.run(command.split(" "),capture_output=True, text=True)
+    result=subprocess.run(command,capture_output=True, text=True,shell=True)
     if result.stderr is not "":
         f(result.stderr)
         exit()
@@ -53,11 +57,7 @@ and the files that it requires.
 extra_dependencies are just in case you dont want to check anything and you just want to pass everything into it
 """
 
-def get_dir(p:str):
-    cwd=getcwd()
-    raw_dir= dirname(abspath(p))
-    return join(".",*raw_dir.split(sep)[len(cwd.split(sep)):])
-    
+
 
 """ what this is for? well its for keeping some kind of order when compiling  our files
  it doesnt need much, and its just a simple tool for managing the scripting part for our dependencies yk
@@ -130,7 +130,7 @@ class Builder:
         self.queue_builds=[]
     def call_dependency(self,dependencies:list[str]):
         b=next((b for b in self.queue_builds if b.build==dependencies),None)
-        if b is None:
+        if b==None:
             return
         b.compile(self)
     def watch(self,build:list[str],need:list[str],command:str,extra_dependencies:list[str]=[],show_command=True):

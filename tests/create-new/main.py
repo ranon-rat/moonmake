@@ -22,7 +22,7 @@ if __name__=="__main__":
     extension=mmake.get_extension()
     main=mmake.Builder()
     static_a_files=mmake.Builder(join(".",moonmake,"dependencies","lib"),".a")
-    dir_a_files=mmake.change_extension(static_a_files,join(".",moonmake,"dependencies","lib",a))
+    dir_a_files=mmake.change_extension(static_a_files,join(".",moonmake,"dependencies","lib","a"))
     STATIC_LIBRARY=" ".join([f"-l{a.replace("lib","").replace(".a","")}" for a in static_a_files])
 
     target_files=list([f for f in  mmake.discover(join(dir_path,"src","target"),".cpp")])
