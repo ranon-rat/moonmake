@@ -47,3 +47,5 @@ if __name__=="__main__":
 - [x] build system
 - [x] package manager
 - [x] configure your own installation
+- [ ] write the documentation
+
