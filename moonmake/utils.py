@@ -3,16 +3,10 @@ from os.path import join, isdir,isfile
 import requests
 import zipfile
 get_extension=lambda: {"Windows":".exe","Linux":"","Darwin":""}[ platform.system()]
+# this is just for changing the extensions, its for pattern matching
 def change_extension(files:list[str],new_path:str,old:str="",new:str=""):
     return list([join(new_path,f.replace(old,new)) for f in files]) 
-def download_zip(url:str,output_path:str,name:str):
-    body=requests.get(url)
-    zip_path=join(output_path,"zips",f"{name}.zip")
-    with open(zip_path,"w") as outfile:
-        outfile.write(body.raw)
-    source_path=join(output_path,"source")
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-        zip_ref.extractall(source_path)
+# in case you want to add the installation of the dependencies part :)
 def arguments_cmd(args:list[str],execute:(),install:()):
     if len(args)>1 and args[1]=="install":
         install()
