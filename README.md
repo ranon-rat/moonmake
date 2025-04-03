@@ -45,5 +45,5 @@ if __name__=="__main__":
 ## TODO
 
 - [x] build system
-- [ ] package manager
-- [ ] configure your own installation
+- [x] package manager
+- [x] configure your own installation
