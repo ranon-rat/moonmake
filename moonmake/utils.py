@@ -13,7 +13,11 @@ def download_zip(url:str,output_path:str,name:str):
     source_path=join(output_path,"source")
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(source_path)
-  
+def arguments_cmd(args:list[str],execute:(),install:()):
+    if len(args)>1 and args[1]=="install":
+        install()
+        return
+    execute()
 does_exist=lambda route: isdir(route) or isfile(route)
 clean_routes=lambda routes:filter(does_exist,routes)
 join_with_flag=lambda routes,flag: " ".join(map(lambda r:f"{flag}{r}",clean_routes(routes)))  

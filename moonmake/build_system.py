@@ -152,7 +152,6 @@ class Build():
             dependency_date=get_date_file(d)
             if build_file_date < dependency_date or dependency_date==-1: 
                 builder.call_dependency(self.dependencies)
-                print(self.dependencies)
                 recompile=True
                 break
         return recompile
