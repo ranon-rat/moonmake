@@ -17,7 +17,7 @@ i just want to improve my understanding of the c/c++ compiler and I also want to
 
 I hate makefile since it gives a lot limitations( and i dont want to touch ninja either ).
 
-## sintax
+## syntax
 
 ```makefile
 $^-> all 
