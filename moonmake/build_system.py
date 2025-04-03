@@ -42,12 +42,26 @@ static_lib is where the files .a are installed
 the dll i havent added that yet so dont use it
 
 """
+def generate_key(url:str,command:str,headers:list[str],static_lib:str,dlls:list[str]):
+    return f"{command}-{url}-{".".join(headers)}-{static_lib}-{".".join(dlls)}"
 def download_dependency(url:str,name:str,target_dir:str,command:str="",headers=["."],static_lib=".",dlls=[]):
+    linkdir=join(target_dir,"links")
+    makedirs(linkdir,exist_ok=True)
+    link_path=join(linkdir,name)
+    open(link_path,"a").close()
+    with open(link_path,"r+") as linkfile:
+        link_url=linkfile.read()
+        k=generate_key(url,command,headers,static_lib,dlls)
+        if link_url==k: return 
+        try:
+            delete_dir(join(target_dir,"headers",name))
+            print(f"[REPLACING] : {name}")
+        except:
+            pass
+        linkfile.seek(0)
+        linkfile.write(k)
+        linkfile.truncate()
     print(f"[DOWNLOADING] : {name}")
-    try:
-        delete_dir(join(target_dir,"headers",name))
-    except:
-        pass
     download_zip(url,target_dir,name)
     source_files=join(target_dir,"source",name)    
     if command is not "":
