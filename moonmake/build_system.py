@@ -1,8 +1,68 @@
 from pathlib import Path
-from os.path import join,getmtime,dirname,abspath
-from os import makedirs,getcwd,sep
+from os.path import join,getmtime,dirname,abspath,isdir
+import os.path as pathutils
+from os import makedirs,getcwd,sep,listdir
 from re import match
+import zipfile
+import shutil
+import requests
 import subprocess
+def download_zip(url:str,output_dir:str,name:str):
+    body=requests.get(url)
+    zip_dir=join(output_dir,"zips")
+    zip_path=join(zip_dir,f"{name}.zip")
+    makedirs(zip_dir,exist_ok=True)
+    with open(zip_path,"wb") as outfile:
+        outfile.write(body.content)
+
+    source_path=join(output_dir,"source",name)
+    makedirs(source_path,exist_ok=True)
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(source_path)
+def copy_all_to(source_path:str,destiny_dir:str):
+    how_many=0
+    maybe_dir=source_path
+    for f in listdir(source_path):
+        if not isdir(join(source_path,f)):
+            break
+        how_many+=1
+        maybe_dir=join(f)
+    target=source_path
+    if how_many!=0:
+        target=join(source_path,maybe_dir)
+    shutil.copytree(target,destiny_dir)
+def delete_dir(source_path:str):
+    shutil.rmtree(source_path)
+
+"""
+the url is the url of the zip
+the target dir is where the dependency will be installed, i will be installing this in lib,source, zip, headers
+the argument headers is by default ["."], its defined like that in case you want to do some weird shit
+static_lib is where the files .a are installed
+the dll i havent added that yet so dont use it
+
+"""
+def download_dependency(url:str,name:str,target_dir:str,command:str="",headers=["."],static_lib=".",dlls=[]):
+    try:
+        delete_dir(join(target_dir,"headers",name))
+    except:
+        pass
+    download_zip(url,target_dir,name)
+    source_files=join(target_dir,"source",name)    
+    if command is not "":
+        execute_command(command,cwd=source_files)
+    if len(dlls)>0:
+        print("TODO: add support to dll finding :)")        
+    static_libs=[join (target_dir,"source",name,f) for f in discover(source_files,".a")]
+    static_libs_names=[pathutils.split(i)[-1] for i in static_libs ]
+    for (i,f) in enumerate(static_libs):
+        d=join(target_dir,"lib",static_libs_names[i])
+        shutil.copy(f,d)
+    for header in headers:
+        copy_all_to(join(source_files,header),join(target_dir,"headers",name))
+        
+    
+
 def get_dir(p:str):
     cwd=getcwd()
     raw_dir= dirname(abspath(p))
@@ -14,14 +74,14 @@ def get_date_file(path:str)->float:
     try: return getmtime(path)
     except: return -1
 # then we need to verify if something contains this
-def execute_command(command:str,show_command=True):
+def execute_command(command:str,show_command=True,cwd="."):
     command=command.replace("\\","/")
     if command is "":return 
     f=lambda x: x
     if show_command:
         print(command)
         f=lambda x: print(x)    
-    result=subprocess.run(command,capture_output=True, text=True,shell=True)
+    result=subprocess.run(command,capture_output=True, text=True,shell=True,cwd=cwd)
     if result.stderr is not "":
         f(result.stderr)
         exit()

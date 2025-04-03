@@ -6,3 +6,5 @@ build/
 moonmake/__pycache__/
 tests/*.md
 *.md
+
+*__pycache__
