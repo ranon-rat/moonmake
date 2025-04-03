@@ -43,6 +43,7 @@ the dll i havent added that yet so dont use it
 
 """
 def download_dependency(url:str,name:str,target_dir:str,command:str="",headers=["."],static_lib=".",dlls=[]):
+    print(f"[DOWNLOADING] : {name}")
     try:
         delete_dir(join(target_dir,"headers",name))
     except:
