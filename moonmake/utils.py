@@ -14,4 +14,17 @@ def arguments_cmd(args:list[str],execute:(),install:()):
     execute()
 does_exist=lambda route: isdir(route) or isfile(route)
 clean_routes=lambda routes:filter(does_exist,routes)
-join_with_flag=lambda routes,flag: " ".join(map(lambda r:f"{flag}{r}",clean_routes(routes)))  
+def join_with_flag(routes,flag):
+    complete=""
+    clean_dirs=clean_routes(routes)
+    for i in clean_dirs:
+        print(i)
+        complete+=f" {flag}{i}"
+    return complete
+    #return " ".join(map(lambda r:f"{flag}{r}",clean_routes(routes))) 
+
+
+def strip_lib_prefix(name: str) -> str:
+    if name.startswith("lib"):
+        return name[3:]  # Quita los primeros 3 caracteres
+    return name

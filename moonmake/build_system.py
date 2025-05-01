@@ -7,79 +7,95 @@ import zipfile
 import shutil
 import requests
 import subprocess
-def download_zip(url:str,output_dir:str,name:str):
-    body=requests.get(url)
-    zip_dir=join(output_dir,"zips")
-    zip_path=join(zip_dir,f"{name}.zip")
-    makedirs(zip_dir,exist_ok=True)
-    with open(zip_path,"wb") as outfile:
+import os
+def find_real_root(path: str) -> str:
+    """Detecta si el directorio tiene un solo subdirectorio y lo retorna."""
+    entries = [f for f in listdir(path) if isdir(join(path, f))]
+    if len(entries) == 1:
+        return join(path, entries[0])
+    return path
+
+def download_zip(url: str, output_dir: str, name: str):
+    body = requests.get(url)
+    zip_dir = join(output_dir, "zips")
+    zip_path = join(zip_dir, f"{name}.zip")
+    makedirs(zip_dir, exist_ok=True)
+    with open(zip_path, "wb") as outfile:
         outfile.write(body.content)
 
-    source_path=join(output_dir,"source",name)
-    makedirs(source_path,exist_ok=True)
+    source_path = join(output_dir, "source", name)
+    makedirs(source_path, exist_ok=True)
     with zipfile.ZipFile(zip_path, 'r') as zip_ref:
         zip_ref.extractall(source_path)
-def copy_all_to(source_path:str,destiny_dir:str):
-    how_many=0
-    maybe_dir=source_path
+
+def copy_all_to(source_path: str, destiny_dir: str):
+    makedirs(destiny_dir, exist_ok=True)
     for f in listdir(source_path):
-        if not isdir(join(source_path,f)):
-            break
-        how_many+=1
-        maybe_dir=join(f)
-    target=source_path
-    if how_many!=0:
-        target=join(source_path,maybe_dir)
-    shutil.copytree(target,destiny_dir)
-def delete_dir(source_path:str):
+        src = join(source_path, f)
+        dst = join(destiny_dir, f)
+        if isdir(src):
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+        else:
+            shutil.copy2(src, dst)
+
+def delete_dir(source_path: str):
     shutil.rmtree(source_path)
 
-"""
-the url is the url of the zip
-the target dir is where the dependency will be installed, i will be installing this in lib,source, zip, headers
-the argument headers is by default ["."], its defined like that in case you want to do some weird shit
-static_lib is where the files .a are installed
-the dll i havent added that yet so dont use it
-
-"""
-def generate_key(url:str,command:str,headers:list[str],static_lib:str,dlls:list[str]):
+def generate_key(url: str, command: str, headers: list[str], static_lib: str, dlls: list[str]):
     return f"{command}-{url}-{".".join(headers)}-{static_lib}-{".".join(dlls)}"
-def download_dependency(url:str,name:str,target_dir:str,command:str="",headers=["."],static_lib=["."],dlls=[]):
-    linkdir=join(target_dir,"links")
-    makedirs(linkdir,exist_ok=True)
-    link_path=join(linkdir,name)
-    open(link_path,"a").close()
-    with open(link_path,"r+") as linkfile:
-        link_url=linkfile.read()
-        k=generate_key(url,command,headers,"-".join(static_lib),dlls)
-        if link_url==k: return 
+
+
+def find_deepest_dir_with_files(path: str) -> str:
+    """Busca el subdirectorio más profundo que contiene archivos."""
+    for root, dirs, files in os.walk(path):
+        if files:
+            return root
+    return path
+
+def download_dependency(url: str, name: str, target_dir: str, command: str = "", headers=["."], static_lib=["."], dlls=[]):
+    linkdir = join(target_dir, "links")
+    makedirs(linkdir, exist_ok=True)
+    link_path = join(linkdir, name)
+    open(link_path, "a").close()
+    with open(link_path, "r+") as linkfile:
+        link_url = linkfile.read()
+        k = generate_key(url, command, headers, "-".join(static_lib), dlls)
+        if link_url == k: return
         try:
-            delete_dir(join(target_dir,"headers",name))
+            delete_dir(join(target_dir, "headers", name))
             print(f"[REPLACING] : {name}")
         except:
             pass
         linkfile.seek(0)
         linkfile.write(k)
         linkfile.truncate()
+
     print(f"[DOWNLOADING] : {name}")
-    download_zip(url,target_dir,name)
-    source_files=join(target_dir,"source",name)    
-    if command is not "":
-        execute_command(command,cwd=source_files)
-    if len(dlls)>0:
-        print("TODO: add support to dll finding :)")        
-    static_libs=[join (target_dir,"source",name,f) for f in discover(source_files,".a")]
-    static_libs_names=[pathutils.split(i)[-1] for i in static_libs ]
-    for (i,f) in enumerate(static_libs):
-        d=join(target_dir,"lib",static_libs_names[i])
-        makedirs(dirname(d),exist_ok=True)
+    download_zip(url, target_dir, name)
 
+    source_root = join(target_dir, "source", name)
+    real_source_path = find_deepest_dir_with_files(source_root)  # NEW
 
-        shutil.copy(f,d)
+    if command != "":
+        execute_command(command, cwd=real_source_path)
+
+    if len(dlls) > 0:
+        print("TODO: add support to dll finding :)")
+
+    # Buscar los archivos .a correctamente
+    static_libs = [join(real_source_path, f) for f in discover(real_source_path, ".a")]
+    static_libs_names = [pathutils.split(i)[-1] for i in static_libs]
+
+    for (i, f) in enumerate(static_libs):
+        if not os.path.exists(f):
+            print(f"[WARNING] Static lib not found: {f}")
+            continue
+        d = join(target_dir, "lib", static_libs_names[i])
+        makedirs(dirname(d), exist_ok=True)
+        shutil.copy(f, d)
+
     for header in headers:
-        copy_all_to(join(source_files,header),join(target_dir,"headers",name))
-        
-    
+        copy_all_to(join(real_source_path, header), join(target_dir, "headers", name))
 
 def get_dir(p:str):
     cwd=getcwd()
