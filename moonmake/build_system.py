@@ -72,6 +72,9 @@ def download_dependency(url:str,name:str,target_dir:str,command:str="",headers=[
     static_libs_names=[pathutils.split(i)[-1] for i in static_libs ]
     for (i,f) in enumerate(static_libs):
         d=join(target_dir,"lib",static_libs_names[i])
+        makedirs(dirname(d),exist_ok=True)
+
+
         shutil.copy(f,d)
     for header in headers:
         copy_all_to(join(source_files,header),join(target_dir,"headers",name))
