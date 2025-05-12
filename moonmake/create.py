@@ -22,7 +22,7 @@ def get_raylib_url():
     elif system == "Linux":
         return "https://github.com/raysan5/raylib/releases/download/5.5/raylib-5.5_linux_amd64.tar.gz"
     else:
-        raise Exception(f"Unsupported system: \{system\}")
+        raise Exception(f"Unsupported system: {system}")
 def install():
     raylib_url=get_raylib_url()
 
@@ -39,8 +39,8 @@ def execute():
     EXTENSION=mmake.get_extension()
     STATIC_A_FILES=mmake.discover(join(".",moonmake_dir,"dependencies","lib"),".a")
     STATIC_LIBRARY=" ".join([f"-l{mmake.strip_lib_prefix(a).replace(".a","")}" for a in STATIC_A_FILES]+["-lgdi32 ","-lwinmm"])
-    IGNORE_FLAGS=" ".join(["-Wno-unused-parameter"])
-   
+    IGNORE_FLAGS=" ".join(["-Wno-unused-parameter","-Wtype-limits"])
+    NAME="msrc"
     main=mmake.Builder()
     
     static_watch_file=[join(moonmake_dir,"dependencies","lib",a) for a in STATIC_A_FILES]
@@ -52,15 +52,15 @@ def execute():
     #these files are for the static file :)    
     lib_files=list([f for f in  mmake.discover(join(dir_path,"src","lib"),".cpp")])
     lib_obj=mmake.change_extension(lib_files,join(dir_path,moonmake_dir,"obj","lib"),old=".cpp",new=".o")
-    lib_static=join(dir_path,moonmake_dir,"lib","libmsrc.a")
+    lib_static=join(dir_path,moonmake_dir,"lib",f"lib{NAME}.a")
     #so we generate the binaries
-    main.watch(list(map(lambda r:r,target_bin)),list(map(lambda r:r,target_obj)),f"g++  $< -o $@ {FLAGS} {LINK} {STATIC_LIBRARY} -lmsrc",extra_dependencies=[lib_static,*static_watch_file,*HEADERS])
+    main.watch(list(map(lambda r:r,target_bin)),list(map(lambda r:r,target_obj)),f"g++  $< -o $@ {FLAGS} {LINK} {STATIC_LIBRARY} -l{NAME}",extra_dependencies=[lib_static,*static_watch_file,*HEADERS])
     #object files for the target_files :D
-    main.watch(target_obj,list(map(lambda r:join(".","src","target",r),target_files)),f"g++ -c $< -o $@ {FLAGS} {INCLUDE}  {IGNORE_FLAGS    } ")
+    main.watch(target_obj,list(map(lambda r:join(".","src","target",r),target_files)),f"g++ -c $< -o $@ {FLAGS} {INCLUDE}  {IGNORE_FLAGS    } ",extra_dependencies=[lib_static,*static_watch_file,*HEADERS])
     #we create a library for later linking it with our target binaries
     main.watch([lib_static],lib_obj,"ar rcs $@ $^")
     #we generate the object files of thebinaries
-    main.watch(lib_obj,list(map(lambda r:join(".","src","lib",r),lib_files)),f"g++ -c $< -o $@ {FLAGS} {INCLUDE} {IGNORE_FLAGS}")
+    main.watch(lib_obj,list(map(lambda r:join(".","src","lib",r),lib_files)),f"g++ -c $< -o $@ {FLAGS} {INCLUDE} {IGNORE_FLAGS}",extra_dependencies=[*static_watch_file,*HEADERS])
 
     main.compile_all()
 if __name__=="__main__":
