@@ -115,6 +115,8 @@ Al escribir comandos de construcción, puedes usar estas variables especiales:
    - Coloca el código de biblioteca en `src/lib`
    - Pon los ejecutables principales en `src/target`
 
+
+
 2. **Dependencias**
    - Usa la función `install()` para gestionar dependencias externas
    - Mantén las versiones de dependencias sincronizadas usando el sistema de enlaces
@@ -309,3 +311,8 @@ def execute():
 
 if __name__ == "__main__":
     mmake.arguments_cmd(sys.argv, execute, install) 
+
+
+```
+
+> i love math :)
