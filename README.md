@@ -1,10 +1,6 @@
-<p align="center">
+<h1 align="center">Moonmake 🌙</h1>
 
-# Moonmake 🌙
-
-[English](https://github.com/ranon-rat/moonmake/tree/main/docs/en/README.md) | [Español](https://github.com/ranon-rat/moonmake/tree/main/docs/es/README.md)
-
-</p>
+<a align="center" href="https://github.com/ranon-rat/moonmake/tree/main/docs/en/README.md">English</a> | <a href="https://github.com/ranon-rat/moonmake/tree/main/docs/es/README.md">Español</a>
 
 <p align="center">
 <img src="images/hero.png" alt="Moonmake Hero Image">
