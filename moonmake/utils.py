@@ -17,7 +17,6 @@ clean_routes=lambda routes:filter(does_exist,routes)
 def join_with_flag(routes:list[str],flag:str):
     complete=""
     for i in routes:
-        print(i)
         complete+=f" {flag}{i}"
     return complete
     #return " ".join(map(lambda r:f"{flag}{r}",clean_routes(routes))) 
