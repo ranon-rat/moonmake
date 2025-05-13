@@ -20,18 +20,13 @@ Inspired by makefile, made for my own purposes
 ## Quick Start 🚀
 
 1. **Install Moonmake**
-# Installation
-
 ```bash
-git install github.com/ranon-rat/moonmake
-cd moonmake
-pip3 -r requirements.txt
-pip3 install .
+pip install moonmake
 ```
 
 2. **Create a New Project**
 ```bash
-python -m moonmake.create -n my_project
+moonmake-new -n my_project
 ```
 
 3. **Install Dependencies**

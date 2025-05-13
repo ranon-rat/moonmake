@@ -5,7 +5,6 @@ Moonmake is a lightweight build system designed for C++ projects inspired by mak
 ## Core Concepts
 
 ### Project Structure
-A typical moonmake project follows this structure:
 ```
 project/
 ├── .moonmake/
@@ -24,7 +23,7 @@ project/
 
 ### Builder System
 
-The Builder system is the core of moonmake. It manages the compilation process through a set of rules that define how files should be built and their dependencies.
+The Builder system manages the compilation process through rules that define how files should be built and their dependencies.
 
 Key features:
 - Automatic dependency tracking
@@ -32,144 +31,44 @@ Key features:
 - Support for static libraries
 - Cross-platform compatibility
 
-#### Basic Builder Usage
-
-```python
-builder = mmake.Builder()
-
-# Rule to compile a target
-builder.watch(
-    target_files,      # Files to build
-    dependencies,      # Required dependencies
-    compile_command,   # Command to execute
-    extra_dependencies # Additional dependencies to watch
-)
-```
-
 ### Common Commands
 
-1. **Creating a New Project**
 ```bash
-python -m moonmake.create -n project_name
-```
+# Create a new project
+moonmake-new -n project_name
 
-2. **Installing Dependencies**
-```bash
+# Install dependencies
 python build.py install
-```
 
-3. **Building the Project**
-```bash
+# Build the project
 python build.py
 ```
 
-### Build Configuration
-
-The `build.py` file is where you configure your project. Here's a basic example:
-
-```python
-def execute():
-    # Configure paths and flags
-    include_paths = [...]
-    lib_paths = [...]
-    
-    # Set up compiler flags
-    COMPILER_FLAGS = "-Wall -Wextra -std=c++2b"
-    
-    # Create builder
-    builder = mmake.Builder()
-    
-    # Add build rules
-    builder.watch(target_files, dependencies, compile_command)
-    
-    # Execute build
-    builder.compile_all()
-```
-
-### Dependency Management
-
-Moonmake includes a simple dependency management system:
-
-```python
-def install():
-    mmake.download_dependency(
-        url,           # Dependency URL
-        name,         # Dependency name
-        target_dir,   # Installation directory
-        headers=["include"]  # Header directories to copy
-    )
-```
-
-### Special Variables in Commands
-
-When writing build commands, you can use these special variables:
-- `$@` : The target file
-- `$<` : Depedency of the index of the target file
-- `$^` : All dependencies
-- `$?` : Extra dependencies
-
-## Best Practices
-
-1. **Project Organization**
-   - Keep header files in `src/include`
-   - Place library code in `src/lib`
-   - Put main executables in `src/target`
-
-2. **Dependencies**
-   - Use the `install()` function to manage external dependencies
-   - Keep dependency versions in sync using the link system
-
-3. **Build Rules**
-   - Use appropriate compiler flags for your project
-   - Include necessary system libraries (e.g., `-lgdi32` for Windows)
-   - Watch for changes in header files
-
-## Platform Support
-
-Moonmake supports:
-- Windows (MinGW-w64)
-- Linux
-- macOS
-
-Each platform has specific configurations handled automatically by the build system.
-
 ## Core Functions Reference
-
-This section explains the basic functions provided by moonmake that you'll commonly use in your `build.py` file.
 
 ### Directory and Path Functions
 
 #### `mmake.get_dir(__file__)`
-```python
-dir_path = mmake.get_dir(__file__)
-```
-Returns the relative path of the current directory from the workspace root. This is useful for creating paths relative to your build script.
+Returns the relative path of the current directory from the workspace root.
 
 #### `mmake.get_extension()`
-```python
-EXTENSION = mmake.get_extension()
-```
 Returns the appropriate executable extension for the current platform:
 - Windows: `.exe`
-- Linux: `""` (no extension)
-- macOS: `""` (no extension)
+- Linux/macOS: `""` (no extension)
 
-### File Discovery and Management
+### File Management
 
 #### `mmake.discover(directory, endswith)`
-```python
-headers = mmake.discover(join(dir_path, "src", "include"), ".h++")
-```
-Recursively finds all files in a directory that end with a specific extension. Returns a list of relative paths.
+Recursively finds all files in a directory that end with a specific extension.
 
-Example:
 ```python
 # Find all .cpp files in src/lib
 cpp_files = mmake.discover("src/lib", ".cpp")
-# Result: ["main.cpp", "utils/helper.cpp", ...]
 ```
 
 #### `mmake.change_extension(files, new_path, old="", new="")`
+Changes the extension of files and optionally moves them to a new directory.
+
 ```python
 obj_files = mmake.change_extension(
     cpp_files,
@@ -178,84 +77,47 @@ obj_files = mmake.change_extension(
     new=".o"
 )
 ```
-Changes the extension of a list of files and optionally moves them to a new directory. Useful for generating object file paths from source files.
 
 ### Dependency Management
 
 #### `mmake.download_dependency(url, name, target_dir, headers=["include"])`
-```python
-mmake.download_dependency(
-    "https://example.com/lib.zip",
-    "mylib",
-    ".moonmake/dependencies",
-    headers=["include"]
-)
-```
-Downloads and installs an external dependency. It:
-- Downloads the dependency from the URL
-- Extracts it to the target directory
-- Copies header files from specified directories
-- Manages version tracking through a link file
+Downloads and installs an external dependency:
+- Downloads from URL
+- Extracts to target directory
+- Copies header files
+- Manages version tracking
 
-### Path and Flag Utilities
-
-#### `mmake.join_with_flag(paths, flag)`
-```python
-INCLUDE_FLAGS = mmake.join_with_flag(include_paths, "-I")
-# Result: "-I/path1 -I/path2 -I/path3"
-```
-Joins a list of paths with a specific flag. Commonly used for generating compiler flags like `-I` for includes or `-L` for library paths.
-
-#### `mmake.strip_lib_prefix(name)`
-```python
-lib_name = mmake.strip_lib_prefix("libraylib.a")
-# Result: "raylib.a"
-```
-Removes the "lib" prefix from library names. Useful when generating linker flags.
-
-### Build System Functions
+### Build System
 
 #### `mmake.Builder()`
-```python
-builder = mmake.Builder()
-```
-Creates a new build system instance. This is the main class you'll use to define build rules.
+Creates a new build system instance.
 
 #### `builder.watch(target, dependencies, command, extra_dependencies=[])`
-```python
-builder.watch(
-    target_files,          # Files to build
-    dependency_files,      # Required dependencies
-    "g++ $< -o $@",       # Build command
-    extra_dependencies     # Additional files to watch
-)
-```
-Defines a build rule. The command can use special variables:
+Defines a build rule using special variables:
 - `$@`: Target file
-- `$<`: First dependency
+- `$<`: Dependency of the index of the target file
 - `$^`: All dependencies
 - `$?`: Extra dependencies
 
 #### `builder.compile_all()`
-```python
-builder.compile_all()
-```
-Executes all build rules in the correct order, respecting dependencies.
+Executes all build rules in the correct order.
+
+### Utilities
+
+#### `mmake.join_with_flag(paths, flag)`
+Joins paths with a specific flag (e.g., `-I` for includes).
+
+#### `mmake.strip_lib_prefix(name)`
+Removes the "lib" prefix from library names.
 
 ### Command Line Interface
 
 #### `mmake.arguments_cmd(sys.argv, execute, install)`
-```python
-if __name__ == "__main__":
-    mmake.arguments_cmd(sys.argv, execute, install)
-```
-Handles command-line arguments for your build script. Supports:
-- `python build.py`: Runs the `execute()` function
-- `python build.py install`: Runs the `install()` function
+Handles command-line arguments:
+- `python build.py`: Runs `execute()`
+- `python build.py install`: Runs `install()`
 
-### Example Usage
-
-Here's a complete example showing how these functions work together:
+## Example Usage
 
 ```python
 import moonmake as mmake
@@ -266,7 +128,6 @@ import sys
 dir_path = mmake.get_dir(__file__)
 
 def install():
-    # Download and install raylib
     raylib_url = "https://github.com/raysan5/raylib/releases/download/5.5/raylib-5.5_win64_mingw-w64.zip"
     mmake.download_dependency(
         raylib_url,
@@ -276,10 +137,8 @@ def install():
     )
 
 def execute():
-    # Find all source files
+    # Find and process source files
     cpp_files = mmake.discover(join(dir_path, "src"), ".cpp")
-    
-    # Generate object file paths
     obj_files = mmake.change_extension(
         cpp_files,
         join(dir_path, ".moonmake", "obj"),
@@ -287,26 +146,28 @@ def execute():
         new=".o"
     )
     
-    # Set up include paths
+    # Configure build
     include_paths = [
         join(".moonmake", "dependencies", "headers"),
         join(dir_path, "src", "include")
     ]
     INCLUDE_FLAGS = mmake.join_with_flag(include_paths, "-I")
     
-    # Create and configure builder
+    # Build
     builder = mmake.Builder()
-    
-    # Add build rules
     builder.watch(
         obj_files,
         cpp_files,
         f"g++ -c $< -o $@ -Wall -Wextra {INCLUDE_FLAGS}"
     )
-    
-    # Execute build
     builder.compile_all()
 
 if __name__ == "__main__":
-    mmake.arguments_cmd(sys.argv, execute, install) 
+    mmake.arguments_cmd(sys.argv, execute, install)
 ```
+
+## Platform Support
+
+- Windows (MinGW-w64)
+- Linux
+- macOS
