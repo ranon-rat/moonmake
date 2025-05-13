@@ -8,3 +8,5 @@ tests/*.md
 
 *__pycache__
 dist
+
+.others
