@@ -59,15 +59,16 @@ Returns the appropriate executable extension for the current platform:
 ### File Management
 
 #### `mmake.discover(directory, endswith)`
-Recursively finds all files in a directory that end with a specific extension.
+Recursively finds all files in a directory that end with a specific extension. Returns a list of relative paths.
 
 ```python
 # Find all .cpp files in src/lib
 cpp_files = mmake.discover("src/lib", ".cpp")
+# Result: ["main.cpp", "utils/helper.cpp", "math/vector.cpp"]
 ```
 
 #### `mmake.change_extension(files, new_path, old="", new="")`
-Changes the extension of files and optionally moves them to a new directory.
+Changes the extension of files and optionally moves them to a new directory. Returns a list of new file paths.
 
 ```python
 obj_files = mmake.change_extension(
@@ -76,39 +77,87 @@ obj_files = mmake.change_extension(
     old=".cpp",
     new=".o"
 )
+# Result: [".moonmake/obj/main.o", ".moonmake/obj/utils/helper.o", ".moonmake/obj/math/vector.o"]
 ```
 
 ### Dependency Management
 
 #### `mmake.download_dependency(url, name, target_dir, headers=["include"])`
-Downloads and installs an external dependency:
-- Downloads from URL
-- Extracts to target directory
-- Copies header files
-- Manages version tracking
+Downloads and installs an external dependency. Returns nothing, but sets up the dependency in the target directory.
+
+```python
+# Example: Download and install raylib
+mmake.download_dependency(
+    "https://github.com/raysan5/raylib/releases/download/5.5/raylib-5.5_win64_mingw-w64.zip",
+    "raylib",                # Name of the dependency
+    ".moonmake/dependencies", # Where to install
+    headers=["include"]      # Which directories to copy as headers
+)
+
+# Example: Download a custom library
+mmake.download_dependency(
+    "https://example.com/mylib.zip",
+    "mylib",
+    ".moonmake/dependencies",
+    headers=["include", "src/headers"]  # Multiple header directories
+)
+```
 
 ### Build System
 
 #### `mmake.Builder()`
-Creates a new build system instance.
+Creates a new build system instance. The Builder manages the compilation process and dependencies.
 
-#### `builder.watch(target, dependencies, command, extra_dependencies=[])`
-Defines a build rule using special variables:
-- `$@`: Target file
-- `$<`: Dependency of the index of the target file
-- `$^`: All dependencies
-- `$?`: Extra dependencies
+#### Special Variables in Build Rules
+When defining build rules with `builder.watch()`, you can use these special variables:
+- `$@`: Represents the target file(s) being built
+- `$<`: Represents the dependency at the index position of the target file (e.g., if target[0] is being built, $< will be dependencies[0])
+- `$^`: Represents all dependencies (useful for linking multiple files)
+- `$?`: Represents extra dependencies (files to watch for changes)
 
-#### `builder.compile_all()`
-Executes all build rules in the correct order.
+Examples of using special variables:
+```python
+# Using $@ and $< for index-based compilation
+builder.watch(
+    ["program1.exe", "program2.exe"],    # Targets
+    ["main1.cpp", "main2.cpp"],         # Dependencies
+    "g++ $< -o $@ -Wall"                # When building program1.exe, $< is main1.cpp
+                                        # When building program2.exe, $< is main2.cpp
+)
+
+# Using $^ for linking multiple files
+builder.watch(
+    ["program.exe"],                    # $@ will be "program.exe"
+    ["main.o", "utils.o", "math.o"],   # $^ will be "main.o utils.o math.o"
+    "g++ $^ -o $@ -lraylib"            # Expands to: g++ main.o utils.o math.o -o program.exe -lraylib
+)
+
+# Using $? for extra dependencies
+builder.watch(
+    ["program.exe"],
+    ["main.o"],
+    "g++ $< -o $@",
+    extra_dependencies=["config.h"]     # $? will be "config.h"
+)
+```
 
 ### Utilities
 
 #### `mmake.join_with_flag(paths, flag)`
-Joins paths with a specific flag (e.g., `-I` for includes).
+Joins paths with a specific flag (e.g., `-I` for includes). Returns a string with all paths joined with the flag.
+
+```python
+INCLUDE_FLAGS = mmake.join_with_flag(include_paths, "-I")
+# Result: "-I/path1 -I/path2 -I/path3"
+```
 
 #### `mmake.strip_lib_prefix(name)`
-Removes the "lib" prefix from library names.
+Removes the "lib" prefix from library names. Returns the library name without the prefix.
+
+```python
+lib_name = mmake.strip_lib_prefix("libraylib.a")
+# Result: "raylib.a"
+```
 
 ### Command Line Interface
 
