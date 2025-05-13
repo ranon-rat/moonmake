@@ -7,7 +7,7 @@ import sys
 dir_path = mmake.get_dir(__file__)
 
 def get_raylib_url():
-    \"""Determines the Raylib download URL based on the operating system.\"""
+    """Determines the Raylib download URL based on the operating system."""
     system = platform.system()
     BASE_URL = "https://github.com/raysan5/raylib/releases/download/5.5"
     
@@ -21,7 +21,7 @@ def get_raylib_url():
         raise Exception(f"Unsupported system: {system}")
 
 def install():
-    \"""Downloads and installs the necessary dependencies.\"""
+    """Downloads and installs the necessary dependencies."""
     raylib_url = get_raylib_url()
     mmake.download_dependency(
         raylib_url, 
@@ -31,7 +31,7 @@ def install():
     )
 
 def execute():
-    \"""Configures and executes the build process.\"""
+    """Configures and executes the build process."""
     # Directories and configuration
     MOONMAKE_DIR = ".moonmake"
     PROJECT_NAME = "msrc"
