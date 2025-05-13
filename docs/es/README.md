@@ -104,7 +104,7 @@ def install():
 
 Al escribir comandos de construcción, puedes usar estas variables especiales:
 - `$@` : El archivo objetivo
-- `$<` : La primera dependencia
+- `$<` : Dependencia del indice del archivo objetivo
 - `$^` : Todas las dependencias
 - `$?` : Dependencias extra
 

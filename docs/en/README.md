@@ -1,6 +1,6 @@
 # Moonmake Documentation
 
-Moonmake is a lightweight build system designed for C++ projects, with a focus on simplicity and ease of use. It provides a Python-based interface for managing dependencies, compiling code, and handling project builds.
+Moonmake is a lightweight build system designed for C++ projects inspired by makefile, with a focus on simplicity and ease of use. It provides a Python-based interface for managing dependencies, compiling code, and handling project builds.
 
 ## Core Concepts
 
@@ -104,7 +104,7 @@ def install():
 
 When writing build commands, you can use these special variables:
 - `$@` : The target file
-- `$<` : The first dependency
+- `$<` : Depedency of the index of the target file
 - `$^` : All dependencies
 - `$?` : Extra dependencies
 
