@@ -1,8 +1,83 @@
-# MoonMake
+# Moonmake 🌙
 
-A simple package manager and build system for c++ and c projects.
+[English](docs/en/README.md) | [Español](docs/es/README.md)
 
-Its simple, it doesnt requires that many things, and its as easy to install as this
+Moonmake is a lightweight, Python-based build system for C++ projects. It provides a simple and intuitive way to manage dependencies, compile code, and handle project builds across different platforms.
+
+## Features ✨
+
+- 🚀 Simple and intuitive build system
+- 📦 Easy dependency management
+- 🔄 Incremental builds
+- 📚 Static library support
+- 🌍 Cross-platform (Windows, Linux, macOS)
+- 🛠️ Flexible build configuration
+- 🔍 Automatic dependency tracking
+
+## Quick Start 🚀
+
+1. **Install Moonmake**
+```bash
+pip install moonmake
+```
+
+2. **Create a New Project**
+```bash
+python -m moonmake.create -n my_project
+```
+
+3. **Install Dependencies**
+```bash
+cd my_project
+python build.py install
+```
+
+4. **Build Your Project**
+```bash
+python build.py
+```
+
+## Project Structure 📁
+
+```
+my_project/
+├── .moonmake/          # Build system directory
+│   ├── bin/           # Compiled binaries
+│   ├── obj/           # Object files
+│   ├── lib/           # Generated libraries
+│   └── dependencies/  # External dependencies
+├── src/
+│   ├── include/       # Header files
+│   ├── lib/           # Library source files
+│   └── target/        # Main executable sources
+└── build.py           # Build configuration
+```
+
+## Documentation 📚
+
+For detailed documentation, please visit:
+- [English Documentation](docs/en/README.md)
+- [Documentación en Español](docs/es/README.md)
+
+## Requirements 📋
+
+- Python 3.6+
+- C++ Compiler (g++/clang++)
+- For Windows: MinGW-w64
+
+## Contributing 🤝
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License 📄
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments 🙏
+
+- Inspired by modern build systems
+- Built with simplicity in mind
+- Thanks to all contributors
 
 
 ```bash
@@ -10,42 +85,3 @@ git install github.com/ranon-rat/moonmake
 cd moonmake
 pip3 install .
 ```
-
-## motivations for this
-
-i just want to improve my understanding of the c/c++ compiler and I also want to start building bigger and more cool projects.
-
-I hate makefile since it gives a lot limitations( and i dont want to touch ninja either ).
-
-## syntax
-
-```makefile
-$^-> all 
-$< each of the dependencies
-$? extra dependencies 
-$@ the building part
-```
-
-And this is how its supposed to look like in action:
-
-```py
-import moonmake as mmake
-from os.path import join
-
-dir_path =mmake.get_dir(__file__)
-# Lista los archivos en el directorio
-if __name__=="__main__":
-    example_files=list([join("example",f) for f in (mmake.discover(join(dir_path,"example"),".cpp"))])
-    example_obj=list([join(dir_path,"obj",f.replace(".cpp",".o")) for f in example_files])
-    mmake.watch([join(dir_path,"main.exe")],example_obj,"g++ $^ -o $@")
-    mmake.watch(example_obj,list([join(dir_path,i) for i in example_files]),"g++ -c $< -o $@")
-    mmake.compile_all()
-```
-
-## TODO
-
-- [x] build system
-- [x] package manager
-- [x] configure your own installation
-- [ ] write the documentation
-
