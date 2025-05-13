@@ -14,10 +14,9 @@ def arguments_cmd(args:list[str],execute:(),install:()):
     execute()
 does_exist=lambda route: isdir(route) or isfile(route)
 clean_routes=lambda routes:filter(does_exist,routes)
-def join_with_flag(routes,flag):
+def join_with_flag(routes:list[str],flag:str):
     complete=""
-    clean_dirs=clean_routes(routes)
-    for i in clean_dirs:
+    for i in routes:
         print(i)
         complete+=f" {flag}{i}"
     return complete

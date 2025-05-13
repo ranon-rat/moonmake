@@ -6,68 +6,139 @@ import argparse
 BASE_MOONFILE="""#https://github.com/ranon-rat/moonmake
 import moonmake as mmake
 from os.path import join
-
 import platform
 import sys
-dir_path =mmake.get_dir(__file__)
-# Lista los archivos en el directorio
 
+dir_path = mmake.get_dir(__file__)
 
 def get_raylib_url():
+    \"""Determines the Raylib download URL based on the operating system.\"""
     system = platform.system()
+    BASE_URL = "https://github.com/raysan5/raylib/releases/download/5.5"
+    
     if system == "Windows":
-        return "https://github.com/raysan5/raylib/releases/download/5.5/raylib-5.5_win64_mingw-w64.zip"
+        return f"{BASE_URL}/raylib-5.5_win64_mingw-w64.zip"
     elif system == "Darwin":  # macOS
-        return "https://github.com/raysan5/raylib/releases/download/5.5/raylib-5.5_macos.tar.gz"
+        return f"{BASE_URL}/raylib-5.5_macos.tar.gz"
     elif system == "Linux":
-        return "https://github.com/raysan5/raylib/releases/download/5.5/raylib-5.5_linux_amd64.tar.gz"
+        return f"{BASE_URL}/raylib-5.5_linux_amd64.tar.gz"
     else:
         raise Exception(f"Unsupported system: {system}")
+
 def install():
-    raylib_url=get_raylib_url()
+    \"""Downloads and installs the necessary dependencies.\"""
+    raylib_url = get_raylib_url()
+    mmake.download_dependency(
+        raylib_url, 
+        "raylib", 
+        ".moonmake/dependencies", 
+        headers=["include"]
+    )
 
-    mmake.download_dependency(raylib_url,"raylib",".moonmake/dependencies",headers=["include"])
-    pass
 def execute():
-    moonmake_dir=".moonmake"
-
-    CPP_VERSION="2b"
-    INCLUDE=f"{mmake.join_with_flag([join(".",moonmake_dir,"dependencies","headers")],"-I")} -I{join(".",dir_path,"src","include")}"
-    FLAGS=f"-Wall -Wextra -std=c++{CPP_VERSION}"
-    LINK=f"{mmake.join_with_flag([join(moonmake_dir,"dependencies","lib")],"-L")} -L{join(dir_path,moonmake_dir,"lib")}"
-    HEADERS=[join(dir_path,"src","include",f) for f in mmake.discover(join(dir_path,"src","include"),".h++")]
-    EXTENSION=mmake.get_extension()
-    STATIC_A_FILES=mmake.discover(join(".",moonmake_dir,"dependencies","lib"),".a")
-    STATIC_LIBRARY=" ".join([f"-l{mmake.strip_lib_prefix(a).replace(".a","")}" for a in STATIC_A_FILES]+["-lgdi32 ","-lwinmm"])
-    IGNORE_FLAGS=" ".join(["-Wno-unused-parameter","-Wtype-limits"])
-    NAME="msrc"
-    main=mmake.Builder()
+    \"""Configures and executes the build process.\"""
+    # Directories and configuration
+    MOONMAKE_DIR = ".moonmake"
+    PROJECT_NAME = "msrc"
+    CPP_VERSION = "2b"
+    EXTENSION = mmake.get_extension()
     
-    static_watch_file=[join(moonmake_dir,"dependencies","lib",a) for a in STATIC_A_FILES]
-    # these are important, remember them :)
-    target_files=list([f for f in  mmake.discover(join(dir_path,"src","target"),".cpp")])
-    target_obj=mmake.change_extension(target_files,join(dir_path,moonmake_dir,"obj","target"),old=".cpp",new=".o")
-    target_bin=mmake.change_extension(target_files,join(dir_path,moonmake_dir,"bin"),old=".cpp",new=EXTENSION)
+    # Important paths
+    include_paths = [
+        join(".", MOONMAKE_DIR, "dependencies", "headers"),
+        join(".", dir_path, "src", "include")
+    ]
     
-    #these files are for the static file :)    
-    lib_files=list([f for f in  mmake.discover(join(dir_path,"src","lib"),".cpp")])
-    lib_obj=mmake.change_extension(lib_files,join(dir_path,moonmake_dir,"obj","lib"),old=".cpp",new=".o")
-    lib_static=join(dir_path,moonmake_dir,"lib",f"lib{NAME}.a")
-    #so we generate the binaries
-    main.watch(list(map(lambda r:r,target_bin)),list(map(lambda r:r,target_obj)),f"g++  $< -o $@ {FLAGS} {LINK} {STATIC_LIBRARY} -l{NAME}",extra_dependencies=[lib_static,*static_watch_file,*HEADERS])
-    #object files for the target_files :D
-    main.watch(target_obj,list(map(lambda r:join(".","src","target",r),target_files)),f"g++ -c $< -o $@ {FLAGS} {INCLUDE}  {IGNORE_FLAGS    } ",extra_dependencies=[lib_static,*static_watch_file,*HEADERS])
-    #we create a library for later linking it with our target binaries
-    main.watch([lib_static],lib_obj,"ar rcs $@ $^")
-    #we generate the object files of thebinaries
-    main.watch(lib_obj,list(map(lambda r:join(".","src","lib",r),lib_files)),f"g++ -c $< -o $@ {FLAGS} {INCLUDE} {IGNORE_FLAGS}",extra_dependencies=[*static_watch_file,*HEADERS])
-
-    main.compile_all()
-if __name__=="__main__":
-    mmake.arguments_cmd(sys.argv,execute,install)
-
+    lib_paths = [
+        join(MOONMAKE_DIR, "dependencies", "lib"),
+        join( MOONMAKE_DIR, "lib")
+    ]
     
+    # Header files
+    headers = [join(dir_path, "src", "include", f) 
+               for f in mmake.discover(join(dir_path, "src", "include"), ".h++")]
+    
+    # Static libraries
+    static_a_files = mmake.discover(join(".", MOONMAKE_DIR, "dependencies", "lib"), ".a")
+    static_libs = [f"-l{mmake.strip_lib_prefix(a).replace('.a', '')}" for a in static_a_files]
+    
+    if platform.system() == "Windows":
+        static_libs.extend(["-lgdi32", "-lwinmm"])
+    
+    # Compilation flags
+    INCLUDE_FLAGS = mmake.join_with_flag(include_paths, "-I")
+    LINK_FLAGS = mmake.join_with_flag(lib_paths, "-L")
+    STATIC_LIBRARY = " ".join(static_libs)
+    COMPILER_FLAGS = f"-Wall -Wextra -std=c++{CPP_VERSION}"
+    IGNORE_FLAGS = "-Wno-unused-parameter -Wno-type-limits"
+    
+    # Files to watch for changes
+    static_watch_files = [join(MOONMAKE_DIR, "dependencies", "lib", a) for a in static_a_files]
+    
+    # Library files
+    lib_files = [f for f in mmake.discover(join(dir_path, "src", "lib"), ".cpp")]
+    lib_obj = mmake.change_extension(
+        lib_files, 
+        join(dir_path, MOONMAKE_DIR, "obj", "lib"), 
+        old=".cpp", 
+        new=".o"
+    )
+    lib_static = join(dir_path, MOONMAKE_DIR, "lib", f"lib{PROJECT_NAME}.a")
+    
+    # Target files (binaries)
+    target_files = [f for f in mmake.discover(join(dir_path, "src", "target"), ".cpp")]
+    target_obj = mmake.change_extension(
+        target_files, 
+        join(dir_path, MOONMAKE_DIR, "obj", "target"), 
+        old=".cpp", 
+        new=".o"
+    )
+    target_bin = mmake.change_extension(
+        target_files, 
+        join(dir_path, MOONMAKE_DIR, "bin"), 
+        old=".cpp", 
+        new=EXTENSION
+    )
+    
+    # Configure the builder
+    builder = mmake.Builder()
+    
+    # Rule to generate the final binaries
+    builder.watch(
+        target_bin, 
+        target_obj, 
+        f"g++ $< -o $@ {COMPILER_FLAGS} {LINK_FLAGS} {STATIC_LIBRARY} -l{PROJECT_NAME}",
+        extra_dependencies=[lib_static, *static_watch_files, *headers]
+    )
+    
+    # Rule to compile target object files
+    builder.watch(
+        target_obj, 
+        [join(".", "src", "target", f) for f in target_files],
+        f"g++ -c $< -o $@ {COMPILER_FLAGS} {INCLUDE_FLAGS} {IGNORE_FLAGS}",
+        extra_dependencies=[lib_static, *static_watch_files, *headers]
+    )
+    
+    # Rule to create the static library
+    builder.watch(
+        [lib_static], 
+        lib_obj, 
+        "ar rcs $@ $^"
+    )
+    
+    # Rule to compile library object files
+    builder.watch(
+        lib_obj, 
+        [join(".", "src", "lib", f) for f in lib_files],
+        f"g++ {COMPILER_FLAGS} {IGNORE_FLAGS} -c $< -o $@ {INCLUDE_FLAGS}",
+        extra_dependencies=[*headers]
+    )
+    
+    # Execute all build rules
+    builder.compile_all()
 
+if __name__ == "__main__":
+    mmake.arguments_cmd(sys.argv, execute, install)
 """
 def build_folder(route:str,readme:str):
     makedirs(route,exist_ok=True)
