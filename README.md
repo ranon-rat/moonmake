@@ -3,6 +3,7 @@
 [English](docs/en/README.md) | [Español](docs/es/README.md)
 
 Moonmake is a lightweight, Python-based build system for C++ projects. It provides a simple and intuitive way to manage dependencies, compile code, and handle project builds across different platforms.
+Inspired by makefile, made for my own purposes
 
 ## Features ✨
 
@@ -12,7 +13,6 @@ Moonmake is a lightweight, Python-based build system for C++ projects. It provid
 - 📚 Static library support
 - 🌍 Cross-platform (Windows, Linux, macOS)
 - 🛠️ Flexible build configuration
-- 🔍 Automatic dependency tracking
 
 ## Quick Start 🚀
 
@@ -68,16 +68,6 @@ For detailed documentation, please visit:
 ## Contributing 🤝
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License 📄
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgments 🙏
-
-- Inspired by modern build systems
-- Built with simplicity in mind
-- Thanks to all contributors
 
 
 ```bash
