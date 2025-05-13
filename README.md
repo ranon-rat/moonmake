@@ -17,8 +17,13 @@ Inspired by makefile, made for my own purposes
 ## Quick Start 🚀
 
 1. **Install Moonmake**
+# Installation
+
 ```bash
-pip install moonmake
+git install github.com/ranon-rat/moonmake
+cd moonmake
+pip3 -r requirements.txt
+pip3 install .
 ```
 
 2. **Create a New Project**
@@ -69,9 +74,3 @@ For detailed documentation, please visit:
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-
-```bash
-git install github.com/ranon-rat/moonmake
-cd moonmake
-pip3 install .
-```
