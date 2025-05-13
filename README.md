@@ -1,6 +1,9 @@
 # Moonmake 🌙
 
+
 [English](https://github.com/ranon-rat/moonmake/tree/main/docs/en/README.md) | [Español](https://github.com/ranon-rat/moonmake/tree/main/docs/es/README.md)
+
+![img](images/hero.png)
 
 Moonmake is a lightweight, Python-based build system for C++ projects. It provides a simple and intuitive way to manage dependencies, compile code, and handle project builds across different platforms.
 Inspired by makefile, made for my own purposes
