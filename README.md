@@ -1,7 +1,12 @@
+<p align="center">
+
 # Moonmake 🌙
 
 
 [English](https://github.com/ranon-rat/moonmake/tree/main/docs/en/README.md) | [Español](https://github.com/ranon-rat/moonmake/tree/main/docs/es/README.md)
+
+</p>
+
 
 ![img](images/hero.png)
 
