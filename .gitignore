@@ -7,3 +7,4 @@ moonmake/__pycache__/
 tests/*.md
 
 *__pycache__
+dist

@@ -7,5 +7,8 @@ setup(
         "console_scripts":[
             "moonmake-new=moonmake.create:__main"
         ]
-    }
+    },
+    install_requires=[
+        "requests==2.32.3"
+    ]
 )
