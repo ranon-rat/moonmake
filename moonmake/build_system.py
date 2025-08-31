@@ -12,10 +12,10 @@ import re
 
 __PATTERN_FOR_DEPENDENCIES_D_FILES__=re.compile(r'^[\w\/.\-+]+:\n',re.MULTILINE)
 def get_matches_from_d_file(file:str,original_extension:str):
-    global __PATTERN_FOR_DEPENDENCIES_D_FILES__
+    global __PATTERN_FOR_DEPENDENCIES_D_FILES__ 
     with open(file.replace(original_extension,".d")) as f:
         text = f.read()
-    return list(map( lambda l: l[:-2], pattern.findall(text)))
+    return list(map( lambda l: l[:-2], __PATTERN_FOR_DEPENDENCIES_D_FILES__.findall(text)))
 
 
 def find_real_root(path: str) -> str:
@@ -200,7 +200,9 @@ class Build():
                     #we have to recompile HOLY SHIT AAAAAA
                     return True
             return False
-        except: return True #obviously in case that it doesnt exists this shit that means that we should completely recompile
+        except Exception as e: 
+            print(e)
+            return True #obviously in case that it doesnt exists this shit that means that we should completely recompile
     # $^
     def compile_all(self,file:str,builder)->bool:
         build_file_date=get_date_file(file)
