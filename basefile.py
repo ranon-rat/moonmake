@@ -1,10 +1,10 @@
+#https://github.com/ranon-rat/moonmake
 import moonmake as mmake
-from os.path import join
 import platform
 import sys
 
 dir_path = mmake.get_dir(__file__)
-
+def join (*dir, separator="/"): return f"{separator}".join(dir)
 def get_raylib_url():
     """Determines the Raylib download URL based on the operating system."""
     system = platform.system()
@@ -30,14 +30,14 @@ def install():
     )
 
 def execute():
-    """Configures and executes the build process."""
-    # Directories and configuration
+    """Configures and executes the build process with incremental compilation."""
+    # Project configuration
     MOONMAKE_DIR = ".moonmake"
     PROJECT_NAME = "msrc"
     CPP_VERSION = "2b"
     EXTENSION = mmake.get_extension()
     
-    # Important paths
+    # Include and library paths
     include_paths = [
         join(".", MOONMAKE_DIR, "dependencies", "headers"),
         join(".", dir_path, "src", "include")
@@ -48,28 +48,24 @@ def execute():
         join( MOONMAKE_DIR, "lib")
     ]
     
-    # Header files
-    headers = [join(dir_path, "src", "include", f) 
-               for f in mmake.discover(join(dir_path, "src", "include"), ".h++")]
-    
-    # Static libraries
+ 
+    # Static library discovery and linking
     static_a_files = mmake.discover(join(".", MOONMAKE_DIR, "dependencies", "lib"), ".a")
     static_libs = [f"-l{mmake.strip_lib_prefix(a).replace('.a', '')}" for a in static_a_files]
     
+    # Platform-specific libraries
     if platform.system() == "Windows":
         static_libs.extend(["-lgdi32", "-lwinmm"])
     
-    # Compilation flags
+    # Compiler and linker flags
     INCLUDE_FLAGS = mmake.join_with_flag(include_paths, "-I")
     LINK_FLAGS = mmake.join_with_flag(lib_paths, "-L")
     STATIC_LIBRARY = " ".join(static_libs)
-    COMPILER_FLAGS = f"-Wall -Wextra -std=c++{CPP_VERSION}"
-    IGNORE_FLAGS = "-Wno-unused-parameter -Wno-type-limits"
+    COMPILER_FLAGS = f"-Wall -Wextra -std=c++{CPP_VERSION} -Werror -O2"
+    IGNORE_FLAGS = "-Wno-unused-parameter -Wno-return-type"  
+    OBJ_FLAGS= "-MMD -MP"  # Generate dependency files (.d) for incremental builds
     
-    # Files to watch for changes
-    static_watch_files = [join(MOONMAKE_DIR, "dependencies", "lib", a) for a in static_a_files]
-    
-    # Library files
+    # Library source files and object compilation
     lib_files = [f for f in mmake.discover(join(dir_path, "src", "lib"), ".cpp")]
     lib_obj = mmake.change_extension(
         lib_files, 
@@ -79,7 +75,7 @@ def execute():
     )
     lib_static = join(dir_path, MOONMAKE_DIR, "lib", f"lib{PROJECT_NAME}.a")
     
-    # Target files (binaries)
+    # Executable target files
     target_files = [f for f in mmake.discover(join(dir_path, "src", "target"), ".cpp")]
     target_obj = mmake.change_extension(
         target_files, 
@@ -94,41 +90,41 @@ def execute():
         new=EXTENSION
     )
     
-    # Configure the builder
+    # Build system configuration
     builder = mmake.Builder()
     
-    # Rule to generate the final binaries
+    # Link executables from object files
     builder.watch(
         target_bin, 
         target_obj, 
         f"g++ $< -o $@ {COMPILER_FLAGS} {LINK_FLAGS} {STATIC_LIBRARY} -l{PROJECT_NAME}",
-        extra_dependencies=[lib_static, *static_watch_files, *headers]
+        dependency_file=True
     )
     
-    # Rule to compile target object files
+    # Compile target source files to objects (with dependency tracking)
     builder.watch(
         target_obj, 
         [join(".", "src", "target", f) for f in target_files],
         f"g++ -c $< -o $@ {COMPILER_FLAGS} {INCLUDE_FLAGS} {IGNORE_FLAGS}",
-        extra_dependencies=[lib_static, *static_watch_files, *headers]
+        dependency_file=True
     )
     
-    # Rule to create the static library
+    # Create static library from library objects
     builder.watch(
         [lib_static], 
         lib_obj, 
         "ar rcs $@ $^"
     )
     
-    # Rule to compile library object files
+    # Compile library source files to objects (with dependency tracking)
     builder.watch(
         lib_obj, 
         [join(".", "src", "lib", f) for f in lib_files],
-        f"g++ {COMPILER_FLAGS} {IGNORE_FLAGS} -c $< -o $@ {INCLUDE_FLAGS}",
-        extra_dependencies=[*headers]
+        f"g++ {COMPILER_FLAGS} {IGNORE_FLAGS} -c $< -o $@ {INCLUDE_FLAGS} {OBJ_FLAGS}",
+        dependency_file=True
     )
     
-    # Execute all build rules
+    # Execute incremental build
     builder.compile_all()
 
 if __name__ == "__main__":
