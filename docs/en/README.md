@@ -250,12 +250,9 @@ import platform
 import sys
 
 dir_path = mmake.get_dir(__file__)
-
-def join(*dir, separator="/"): 
-    return f"{separator}".join(dir)
-
+def join (*dir, separator="/"): return f"{separator}".join(dir).replace(r"\\","/")
 def get_raylib_url():
-    """Determines the Raylib download URL based on the operating system."""
+    #Determines the Raylib download URL based on the operating system
     system = platform.system()
     BASE_URL = "https://github.com/raysan5/raylib/releases/download/5.5"
     
@@ -269,7 +266,7 @@ def get_raylib_url():
         raise Exception(f"Unsupported system: {system}")
 
 def install():
-    """Downloads and installs the necessary dependencies."""
+    #Downloads and installs the necessary dependencies.#
     raylib_url = get_raylib_url()
     mmake.download_dependency(
         raylib_url, 
@@ -279,14 +276,14 @@ def install():
     )
 
 def execute():
-    """Configures and executes the build process with incremental compilation."""
-    # Project configuration
+    #Configures and executes the build process.#
+    # Directories and configuration
     MOONMAKE_DIR = ".moonmake"
     PROJECT_NAME = "msrc"
     CPP_VERSION = "2b"
     EXTENSION = mmake.get_extension()
     
-    # Include and library paths
+    # Important paths
     include_paths = [
         join(".", MOONMAKE_DIR, "dependencies", "headers"),
         join(".", dir_path, "src", "include")
@@ -294,26 +291,28 @@ def execute():
     
     lib_paths = [
         join(MOONMAKE_DIR, "dependencies", "lib"),
-        join(MOONMAKE_DIR, "lib")
+        join( MOONMAKE_DIR, "lib")
     ]
     
-    # Static library discovery and linking
+ 
+    # Static libraries
     static_a_files = mmake.discover(join(".", MOONMAKE_DIR, "dependencies", "lib"), ".a")
     static_libs = [f"-l{mmake.strip_lib_prefix(a).replace('.a', '')}" for a in static_a_files]
     
-    # Platform-specific libraries
     if platform.system() == "Windows":
-        static_libs.extend(["-lgdi32", "-lwinmm"])
+        static_libs.extend(["-lgdi32", "-lwinmm","-mconsole"])
     
-    # Compiler and linker flags
+    # Compilation flags
     INCLUDE_FLAGS = mmake.join_with_flag(include_paths, "-I")
     LINK_FLAGS = mmake.join_with_flag(lib_paths, "-L")
     STATIC_LIBRARY = " ".join(static_libs)
     COMPILER_FLAGS = f"-Wall -Wextra -std=c++{CPP_VERSION} -Werror -O2"
     IGNORE_FLAGS = "-Wno-unused-parameter -Wno-return-type"  
-    OBJ_FLAGS = "-MMD -MP"  # Generate dependency files (.d) for incremental builds
+    OBJ_FLAGS= "-MMD -MP"
+    # Files to watch for changes
+    static_watch_files = [join(MOONMAKE_DIR, "dependencies", "lib", a) for a in static_a_files]
     
-    # Library source files and object compilation
+    # Library files
     lib_files = [f for f in mmake.discover(join(dir_path, "src", "lib"), ".cpp")]
     lib_obj = mmake.change_extension(
         lib_files, 
@@ -323,7 +322,7 @@ def execute():
     )
     lib_static = join(dir_path, MOONMAKE_DIR, "lib", f"lib{PROJECT_NAME}.a")
     
-    # Executable target files
+    # Target files (binaries)
     target_files = [f for f in mmake.discover(join(dir_path, "src", "target"), ".cpp")]
     target_obj = mmake.change_extension(
         target_files, 
@@ -338,33 +337,32 @@ def execute():
         new=EXTENSION
     )
     
-    # Build system configuration
+    # Configure the builder
     builder = mmake.Builder()
     
-    # Link executables from object files
+    # Rule to generate the final binaries
     builder.watch(
         target_bin, 
         target_obj, 
         f"g++ $< -o $@ {COMPILER_FLAGS} {LINK_FLAGS} {STATIC_LIBRARY} -l{PROJECT_NAME}",
-        dependency_file=True
     )
     
-    # Compile target source files to objects (with dependency tracking)
+    # Rule to compile target object files
     builder.watch(
         target_obj, 
         [join(".", "src", "target", f) for f in target_files],
-        f"g++ -c $< -o $@ {COMPILER_FLAGS} {INCLUDE_FLAGS} {IGNORE_FLAGS}",
+        f"g++ -c $< -o $@ {COMPILER_FLAGS} {INCLUDE_FLAGS} {IGNORE_FLAGS} {OBJ_FLAGS}",
         dependency_file=True
     )
     
-    # Create static library from library objects
+    # Rule to create the static library
     builder.watch(
         [lib_static], 
         lib_obj, 
         "ar rcs $@ $^"
     )
     
-    # Compile library source files to objects (with dependency tracking)
+    # Rule to compile library object files
     builder.watch(
         lib_obj, 
         [join(".", "src", "lib", f) for f in lib_files],
@@ -372,7 +370,7 @@ def execute():
         dependency_file=True
     )
     
-    # Execute incremental build
+    # Execute all build rules
     builder.compile_all()
 
 if __name__ == "__main__":
