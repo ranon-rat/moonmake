@@ -1,131 +1,265 @@
-#https://github.com/ranon-rat/moonmake
-import moonmake as mmake
-import platform
-import sys
+from pathlib import Path
+from os.path import join,getmtime,dirname,abspath,isdir
+import os.path as pathutils
+from os import makedirs,getcwd,sep,listdir
+from re import match
+import zipfile
+import shutil
+import requests
+import subprocess
+import os
+import re
 
-dir_path = mmake.get_dir(__file__)
-def join (*dir, separator="/"): return f"{separator}".join(dir)
-def get_raylib_url():
-    """Determines the Raylib download URL based on the operating system."""
-    system = platform.system()
-    BASE_URL = "https://github.com/raysan5/raylib/releases/download/5.5"
-    
-    if system == "Windows":
-        return f"{BASE_URL}/raylib-5.5_win64_mingw-w64.zip"
-    elif system == "Darwin":  # macOS
-        return f"{BASE_URL}/raylib-5.5_macos.tar.gz"
-    elif system == "Linux":
-        return f"{BASE_URL}/raylib-5.5_linux_amd64.tar.gz"
-    else:
-        raise Exception(f"Unsupported system: {system}")
+__PATTERN_FOR_DEPENDENCIES_D_FILES__=re.compile(r'^[\w\/.\-+]+:\n',re.MULTILINE)
+def get_matches_from_d_file(file:str,original_extension:str):
+    global __PATTERN_FOR_DEPENDENCIES_D_FILES__ 
+    with open(file.replace(original_extension,".d")) as f:
+        text = f.read()
+    return list(map( lambda l: l[:-2], __PATTERN_FOR_DEPENDENCIES_D_FILES__.findall(text)))
 
-def install():
-    """Downloads and installs the necessary dependencies."""
-    raylib_url = get_raylib_url()
-    mmake.download_dependency(
-        raylib_url, 
-        "raylib", 
-        ".moonmake/dependencies", 
-        headers=["include"]
-    )
 
-def execute():
-    """Configures and executes the build process with incremental compilation."""
-    # Project configuration
-    MOONMAKE_DIR = ".moonmake"
-    PROJECT_NAME = "msrc"
-    CPP_VERSION = "2b"
-    EXTENSION = mmake.get_extension()
-    
-    # Include and library paths
-    include_paths = [
-        join(".", MOONMAKE_DIR, "dependencies", "headers"),
-        join(".", dir_path, "src", "include")
-    ]
-    
-    lib_paths = [
-        join(MOONMAKE_DIR, "dependencies", "lib"),
-        join( MOONMAKE_DIR, "lib")
-    ]
-    
- 
-    # Static library discovery and linking
-    static_a_files = mmake.discover(join(".", MOONMAKE_DIR, "dependencies", "lib"), ".a")
-    static_libs = [f"-l{mmake.strip_lib_prefix(a).replace('.a', '')}" for a in static_a_files]
-    
-    # Platform-specific libraries
-    if platform.system() == "Windows":
-        static_libs.extend(["-lgdi32", "-lwinmm"])
-    
-    # Compiler and linker flags
-    INCLUDE_FLAGS = mmake.join_with_flag(include_paths, "-I")
-    LINK_FLAGS = mmake.join_with_flag(lib_paths, "-L")
-    STATIC_LIBRARY = " ".join(static_libs)
-    COMPILER_FLAGS = f"-Wall -Wextra -std=c++{CPP_VERSION} -Werror -O2"
-    IGNORE_FLAGS = "-Wno-unused-parameter -Wno-return-type"  
-    OBJ_FLAGS= "-MMD -MP"  # Generate dependency files (.d) for incremental builds
-    
-    # Library source files and object compilation
-    lib_files = [f for f in mmake.discover(join(dir_path, "src", "lib"), ".cpp")]
-    lib_obj = mmake.change_extension(
-        lib_files, 
-        join(dir_path, MOONMAKE_DIR, "obj", "lib"), 
-        old=".cpp", 
-        new=".o"
-    )
-    lib_static = join(dir_path, MOONMAKE_DIR, "lib", f"lib{PROJECT_NAME}.a")
-    
-    # Executable target files
-    target_files = [f for f in mmake.discover(join(dir_path, "src", "target"), ".cpp")]
-    target_obj = mmake.change_extension(
-        target_files, 
-        join(dir_path, MOONMAKE_DIR, "obj", "target"), 
-        old=".cpp", 
-        new=".o"
-    )
-    target_bin = mmake.change_extension(
-        target_files, 
-        join(dir_path, MOONMAKE_DIR, "bin"), 
-        old=".cpp", 
-        new=EXTENSION
-    )
-    
-    # Build system configuration
-    builder = mmake.Builder()
-    
-    # Link executables from object files
-    builder.watch(
-        target_bin, 
-        target_obj, 
-        f"g++ $< -o $@ {COMPILER_FLAGS} {LINK_FLAGS} {STATIC_LIBRARY} -l{PROJECT_NAME}",
-        dependency_file=True
-    )
-    
-    # Compile target source files to objects (with dependency tracking)
-    builder.watch(
-        target_obj, 
-        [join(".", "src", "target", f) for f in target_files],
-        f"g++ -c $< -o $@ {COMPILER_FLAGS} {INCLUDE_FLAGS} {IGNORE_FLAGS}",
-        dependency_file=True
-    )
-    
-    # Create static library from library objects
-    builder.watch(
-        [lib_static], 
-        lib_obj, 
-        "ar rcs $@ $^"
-    )
-    
-    # Compile library source files to objects (with dependency tracking)
-    builder.watch(
-        lib_obj, 
-        [join(".", "src", "lib", f) for f in lib_files],
-        f"g++ {COMPILER_FLAGS} {IGNORE_FLAGS} -c $< -o $@ {INCLUDE_FLAGS} {OBJ_FLAGS}",
-        dependency_file=True
-    )
-    
-    # Execute incremental build
-    builder.compile_all()
+def find_real_root(path: str) -> str:
+    """Detecta si el directorio tiene un solo subdirectorio y lo retorna."""
+    entries = [f for f in listdir(path) if isdir(join(path, f))]
+    if len(entries) == 1:
+        return join(path, entries[0])
+    return path
 
-if __name__ == "__main__":
-    mmake.arguments_cmd(sys.argv, execute, install)
+def download_zip(url: str, output_dir: str, name: str):
+    body = requests.get(url)
+    zip_dir = join(output_dir, "zips")
+    zip_path = join(zip_dir, f"{name}.zip")
+    makedirs(zip_dir, exist_ok=True)
+    with open(zip_path, "wb") as outfile:
+        outfile.write(body.content)
+
+    source_path = join(output_dir, "source", name)
+    makedirs(source_path, exist_ok=True)
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(source_path)
+
+def copy_all_to(source_path: str, destiny_dir: str):
+    makedirs(destiny_dir, exist_ok=True)
+    for f in listdir(source_path):
+        src = join(source_path, f)
+        dst = join(destiny_dir, f)
+        if isdir(src):
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+        else:
+            shutil.copy2(src, dst)
+
+def delete_dir(source_path: str):
+    shutil.rmtree(source_path)
+
+def generate_key(url: str, command: str, headers: list[str], static_lib: str, dlls: list[str]):
+    return f"{command}-{url}-{".".join(headers)}-{static_lib}-{".".join(dlls)}"
+
+
+def find_deepest_dir_with_files(path: str) -> str:
+    """Busca el subdirectorio más profundo que contiene archivos."""
+    for root, dirs, files in os.walk(path):
+        if files:
+            return root
+    return path
+
+def download_dependency(url: str, name: str, target_dir: str, command: str = "", headers=["."], static_lib=["."], dlls=[]):
+    linkdir = join(target_dir, "links")
+    makedirs(linkdir, exist_ok=True)
+    link_path = join(linkdir, name)
+    open(link_path, "a").close()
+    with open(link_path, "r+") as linkfile:
+        link_url = linkfile.read()
+        k = generate_key(url, command, headers, "-".join(static_lib), dlls)
+        if link_url == k: return
+        try:
+            delete_dir(join(target_dir, "headers", name))
+            print(f"[REPLACING] : {name}")
+        except:
+            pass
+        linkfile.seek(0)
+        linkfile.write(k)
+        linkfile.truncate()
+
+    print(f"[DOWNLOADING] : {name}")
+    download_zip(url, target_dir, name)
+
+    source_root = join(target_dir, "source", name)
+    real_source_path = find_deepest_dir_with_files(source_root)  # NEW
+
+    if command != "":
+        execute_command(command, cwd=real_source_path)
+
+    if len(dlls) > 0:
+        print("TODO: add support to dll finding :)")
+
+    # Buscar los archivos .a correctamente
+    static_libs = [join(real_source_path, f) for f in discover(real_source_path, ".a")]
+    static_libs_names = [pathutils.split(i)[-1] for i in static_libs]
+
+    for (i, f) in enumerate(static_libs):
+        if not os.path.exists(f):
+            print(f"[WARNING] Static lib not found: {f}")
+            continue
+        d = join(target_dir, "lib", static_libs_names[i])
+        makedirs(dirname(d), exist_ok=True)
+        shutil.copy(f, d)
+
+    for header in headers:
+        copy_all_to(join(real_source_path, header), join(target_dir, "headers", name))
+
+def get_dir(p:str):
+    cwd=getcwd()
+    raw_dir= dirname(abspath(p))
+    return join(".",*raw_dir.split(sep)[len(cwd.split(sep)):])
+    
+# $^-> all $< each of the dependencies $@ this one $?
+# we get the date of the file, just for checking if there is any new version
+def get_date_file(path:str)->float:
+    try: return getmtime(path)
+    except: return -1
+# then we need to verify if something contains this
+def execute_command(command:str,show_command=True,cwd="."):
+    command=command.replace("\\","/")
+    if command is "":return 
+    f=lambda x: x
+    if show_command:
+        print(command)
+        f=lambda x: print(x)    
+    result=subprocess.run(command,capture_output=True, text=True,shell=True,cwd=cwd)
+    if result.stderr is not "":
+        f(result.stderr)
+        exit()
+    if result.stdout is not "":
+        f(result.stdout)
+"""
+this will return you a list of files that are in the directory that you specified
+the ends with its important because with this you can filter the files that you want
+it will return you the directions of the files 
+but they will be cleared, so you if you are calling something from a directory that looks like this
+src
+ |-c.cpp
+ |--a
+   |-a.cpp
+   |-b.cpp
+you will receive something like this
+a/a.cpp
+a/b.cpp
+c.cpp
+bbut you will not receive src :D
+"""
+def discover(directory: str, endswith: str) -> list[str]:
+    base_path = Path(directory).resolve()
+    file_list: list[str] = list([
+        path.relative_to(base_path).as_posix() 
+        for path in base_path.rglob(f"*{endswith}")])
+    return file_list
+"""
+this is a simple function used for adding a new dependency or list of dependencies into a queue of compiling
+you need to pass the command for compiling it.
+the files that you will be building
+and the files that it requires.
+extra_dependencies are just in case you dont want to check anything and you just want to pass everything into it
+"""
+
+
+
+""" what this is for? well its for keeping some kind of order when compiling  our files
+ it doesnt need much, and its just a simple tool for managing the scripting part for our dependencies yk
+ you can also configure everything you want here if you are bored or anything
+"""
+class Build():
+    
+    def __init__(self,build:list[str],dependencies:list[str],command: str,extra_dependencies:list[str]=[],show_command=True,dependency_file=False):
+        self.build:list[str]=build
+        self.dependencies:list[str]=dependencies
+        self.extra_dependencies:list[str]=extra_dependencies
+        self.command:str=command
+        self.show_command=show_command
+        self.dependency_file=dependency_file
+
+    #$?
+    def check_on_extra(self,file:str)->bool:
+        build_file_date=get_date_file(file)
+        recompile=build_file_date==-1      
+        for (i,d) in enumerate(self.extra_dependencies):
+            dependency_date=get_date_file(d)
+            if dependency_date==-1:
+               print(f"{d} doesnt exists")
+               exit()
+            if build_file_date<dependency_date or dependency_date==-1:
+                recompile=True  
+        return recompile
+    def dependency_recompile(self,file:str)->bool:
+        try:
+            extension=file.split(".")[-1]
+            dependencies=get_matches_from_d_file(file, f".{extension}")
+            file_date=get_date_file(file)
+            for d in dependencies:
+                dependency_date=get_date_file(d)
+                if dependency_date> file_date or dependency_date==-1:
+                    #we have to recompile HOLY SHIT AAAAAA
+                    return True
+            return False
+        except Exception as e: 
+            print(e)
+            return True #obviously in case that it doesnt exists this shit that means that we should completely recompile
+    # $^
+    def compile_all(self,file:str,builder)->bool:
+        build_file_date=get_date_file(file)
+        recompile=build_file_date==-1        
+        for (i,d) in enumerate(self.dependencies):
+            dependency_date=get_date_file(d)
+            if build_file_date < dependency_date or dependency_date==-1: 
+                builder.call_dependency(self.dependencies)
+                recompile=True
+                break
+        return recompile
+    # $<
+    def compile_each(self,file:str,dependency:str,builder)->bool:
+        build_file_date=get_date_file(file)
+        dependency_date=get_date_file(dependency)
+        recompile=build_file_date==-1
+        if build_file_date<dependency_date or dependency_date==-1:
+            builder.call_dependency(self.dependencies)
+            recompile=True
+        return recompile
+      
+    def compile(self,builder)->int:
+        total_compiled=0
+        for (i,bf) in enumerate(self.build):
+            # bf-> before file
+            build_command=self.command.replace("$@",bf).replace("$?"," ".join(self.extra_dependencies))
+            recompile=self.check_on_extra(bf)
+            if self.dependency_file:
+                recompile|=self.dependency_recompile(bf)
+            if "$^" in build_command: #all dependencies will be passed into our file
+                build_command=build_command.replace("$^"," ".join(self.dependencies))
+                recompile|=self.compile_all(bf,builder)
+            if "$<" in build_command :# we need pass the argument of each index
+                build_command=build_command.replace("$<",self.dependencies[i])
+                recompile|=self.compile_each(bf,self.dependencies[i],builder)                
+            if not recompile: continue
+            total_compiled+=1
+            d=dirname(bf)
+            if d is not "":
+                makedirs(d,exist_ok=True)
+            
+            execute_command(build_command,show_command=self.show_command)     
+        return total_compiled 
+#something for internal usage
+class Builder:
+    def __init__(self):
+        self.queue_builds=[]
+    def call_dependency(self,dependencies:list[str]):
+        b=next((b for b in self.queue_builds if b.build==dependencies),None)
+        if b==None:
+            return
+        b.compile(self)
+    def watch(self,build:list[str],need:list[str],command:str,extra_dependencies:list[str]=[],show_command=True,dependency_file=False):
+        build_list=build
+        self.queue_builds.append(Build(build,need,command,extra_dependencies=extra_dependencies,show_command=show_command,dependency_file=dependency_file))
+    def compile_all(self):
+        total_compiled=sum([b.compile(self) for b in reversed(self.queue_builds)])
+        if total_compiled is 0:
+            print("Everything seems to be on date")
+
