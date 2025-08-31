@@ -353,7 +353,7 @@ def execute():
     builder.watch(
         target_obj, 
         [join(".", "src", "target", f) for f in target_files],
-        f"g++ -c $< -o $@ {COMPILER_FLAGS} {INCLUDE_FLAGS} {IGNORE_FLAGS}",
+        f"g++ -c $< -o $@ {COMPILER_FLAGS} {INCLUDE_FLAGS} {IGNORE_FLAGS} {OBJ_FLAGS}",
         dependency_file=True
     )
     
