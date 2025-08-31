@@ -189,16 +189,18 @@ class Build():
             if build_file_date<dependency_date or dependency_date==-1:
                 recompile=True  
         return recompile
-    def dependency_recompile(file:str)->bool:
-        extension=file.split(".")[-1]
-        dependencies=get_matches_from_d_file(file, f".{extension}")
-        file_date=get_date_file(file)
-        for d in dependencies:
-            dependency_date=get_date_file(d)
-            if dependency_date> file_date or dependency_date==-1:
-                #we have to recompile HOLY SHIT AAAAAA
-                return True
-        return False
+    def dependency_recompile(self,file:str)->bool:
+        try:
+            extension=file.split(".")[-1]
+            dependencies=get_matches_from_d_file(file, f".{extension}")
+            file_date=get_date_file(file)
+            for d in dependencies:
+                dependency_date=get_date_file(d)
+                if dependency_date> file_date or dependency_date==-1:
+                    #we have to recompile HOLY SHIT AAAAAA
+                    return True
+            return False
+        except: return True #obviously in case that it doesnt exists this shit that means that we should completely recompile
     # $^
     def compile_all(self,file:str,builder)->bool:
         build_file_date=get_date_file(file)
