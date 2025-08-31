@@ -346,7 +346,6 @@ def execute():
         target_bin, 
         target_obj, 
         f"g++ $< -o $@ {COMPILER_FLAGS} {LINK_FLAGS} {STATIC_LIBRARY} -l{PROJECT_NAME}",
-        dependency_file=True
     )
     
     # Compilar archivos fuente objetivo a objetos (con rastreo de dependencias)
