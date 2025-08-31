@@ -4,9 +4,9 @@ import platform
 import sys
 
 dir_path = mmake.get_dir(__file__)
-def join (*dir, separator="/"): return f"{separator}".join(dir)
+def join (*dir, separator="/"): return f"{separator}".join(dir).replace(r"\\","/")
 def get_raylib_url():
-    """Determines the Raylib download URL based on the operating system."""
+    #Determines the Raylib download URL based on the operating system
     system = platform.system()
     BASE_URL = "https://github.com/raysan5/raylib/releases/download/5.5"
     
@@ -20,7 +20,7 @@ def get_raylib_url():
         raise Exception(f"Unsupported system: {system}")
 
 def install():
-    """Downloads and installs the necessary dependencies."""
+    #Downloads and installs the necessary dependencies.#
     raylib_url = get_raylib_url()
     mmake.download_dependency(
         raylib_url, 
@@ -30,7 +30,7 @@ def install():
     )
 
 def execute():
-    """Configures and executes the build process."""
+    #Configures and executes the build process.#
     # Directories and configuration
     MOONMAKE_DIR = ".moonmake"
     PROJECT_NAME = "msrc"
@@ -54,7 +54,7 @@ def execute():
     static_libs = [f"-l{mmake.strip_lib_prefix(a).replace('.a', '')}" for a in static_a_files]
     
     if platform.system() == "Windows":
-        static_libs.extend(["-lgdi32", "-lwinmm"])
+        static_libs.extend(["-lgdi32", "-lwinmm","-mconsole"])
     
     # Compilation flags
     INCLUDE_FLAGS = mmake.join_with_flag(include_paths, "-I")
@@ -78,7 +78,6 @@ def execute():
     
     # Target files (binaries)
     target_files = [f for f in mmake.discover(join(dir_path, "src", "target"), ".cpp")]
-    print(target_files)
     target_obj = mmake.change_extension(
         target_files, 
         join(dir_path, MOONMAKE_DIR, "obj", "target"), 
@@ -106,7 +105,7 @@ def execute():
     builder.watch(
         target_obj, 
         [join(".", "src", "target", f) for f in target_files],
-        f"g++ -c $< -o $@ {COMPILER_FLAGS} {INCLUDE_FLAGS} {IGNORE_FLAGS}",
+        f"g++ -c $< -o $@ {COMPILER_FLAGS} {INCLUDE_FLAGS} {IGNORE_FLAGS} {OBJ_FLAGS}",
         dependency_file=True
     )
     
