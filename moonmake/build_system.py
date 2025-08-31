@@ -3,6 +3,11 @@ from os.path import join,getmtime,dirname,abspath,isdir
 import os.path as pathutils
 from os import makedirs,getcwd,sep,listdir
 from re import match
+from multiprocessing import Pool
+from typing import Tuple
+from functools import partial
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 import zipfile
 import shutil
 import requests
@@ -123,14 +128,15 @@ def execute_command(command:str,show_command=True,cwd="."):
     if command is "":return 
     f=lambda x: x
     if show_command:
-        print(command)
         f=lambda x: print(x)    
     result=subprocess.run(command,capture_output=True, text=True,shell=True,cwd=cwd)
     if result.stderr is not "":
-        f(result.stderr)
+        f(f"{command}\n{result.stderr}")
         exit()
     if result.stdout is not "":
         f(result.stdout)
+    f(command)
+
 """
 this will return you a list of files that are in the directory that you specified
 the ends with its important because with this you can filter the files that you want
@@ -201,7 +207,6 @@ class Build():
                     return True
             return False
         except Exception as e: 
-            print(e)
             return True #obviously in case that it doesnt exists this shit that means that we should completely recompile
     # $^
     def compile_all(self,file:str,builder)->bool:
@@ -223,29 +228,46 @@ class Build():
             builder.call_dependency(self.dependencies)
             recompile=True
         return recompile
-      
-    def compile(self,builder)->int:
-        total_compiled=0
-        for (i,bf) in enumerate(self.build):
-            # bf-> before file
-            build_command=self.command.replace("$@",bf).replace("$?"," ".join(self.extra_dependencies))
-            recompile=self.check_on_extra(bf)
-            if self.dependency_file:
-                recompile|=self.dependency_recompile(bf)
-            if "$^" in build_command: #all dependencies will be passed into our file
-                build_command=build_command.replace("$^"," ".join(self.dependencies))
-                recompile|=self.compile_all(bf,builder)
-            if "$<" in build_command :# we need pass the argument of each index
-                build_command=build_command.replace("$<",self.dependencies[i])
-                recompile|=self.compile_each(bf,self.dependencies[i],builder)                
-            if not recompile: continue
-            total_compiled+=1
-            d=dirname(bf)
-            if d is not "":
-                makedirs(d,exist_ok=True)
-            
-            execute_command(build_command,show_command=self.show_command)     
-        return total_compiled 
+    def iteration(self,builder,evaluation:Tuple[int,str])->int:
+        i,bf=evaluation
+         # bf-> before file
+        build_command=self.command.replace("$@",bf).replace("$?"," ".join(self.extra_dependencies))
+        recompile=self.check_on_extra(bf)
+        if self.dependency_file:
+            recompile|=self.dependency_recompile(bf)
+        if "$^" in build_command: #all dependencies will be passed into our file
+            build_command=build_command.replace("$^"," ".join(self.dependencies))
+            recompile|=self.compile_all(bf,builder)
+        if "$<" in build_command :# we need pass the argument of each index
+            build_command=build_command.replace("$<",self.dependencies[i])
+            recompile|=self.compile_each(bf,self.dependencies[i],builder)                
+        if not recompile: return 0
+        d=dirname(bf)
+        if d is not "":
+            makedirs(d,exist_ok=True)        
+        execute_command(build_command,show_command=self.show_command) 
+        return 1
+    def compile(self, builder) -> int:
+        total_compiled = 0
+        bound_iterations = partial(self.iteration, builder)
+    
+        try:
+         with ThreadPoolExecutor(max_workers=len(self.build)) as executor:
+             # Submit all tasks
+             futures = [executor.submit(bound_iterations, (i, task)) 
+                       for i, task in enumerate(self.build)]
+             
+             # Collect results as they complete
+             for future in as_completed(futures):
+                 total_compiled += future.result()
+                 
+        except KeyboardInterrupt:
+         print("Interrupción detectada! Terminando workers...")
+         executor.shutdown(wait=False, cancel_futures=True)
+         return 0
+    
+        return total_compiled
+
 #something for internal usage
 class Builder:
     def __init__(self):
