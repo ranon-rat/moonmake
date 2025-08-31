@@ -211,7 +211,7 @@ Removes the "lib" prefix from library names. Returns the library name without th
 
 ```python
 lib_name = mmake.strip_lib_prefix("libraylib.a")
-# Result: "raylib.a"
+# Result: "raylib"
 ```
 
 ### Command Line Interface
