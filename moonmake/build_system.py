@@ -8,6 +8,16 @@ import shutil
 import requests
 import subprocess
 import os
+import re
+
+__PATTERN_FOR_DEPENDENCIES_D_FILES__=re.compile(r'^[\w\/.\-+]+:\n',re.MULTILINE)
+def get_matches_from_d_file(file:str,original_extension:str):
+    global __PATTERN_FOR_DEPENDENCIES_D_FILES__
+    with open(file.replace(original_extension,".d")) as f:
+        text = f.read()
+    return list(map( lambda l: l[:-2], pattern.findall(text)))
+
+
 def find_real_root(path: str) -> str:
     """Detecta si el directorio tiene un solo subdirectorio y lo retorna."""
     entries = [f for f in listdir(path) if isdir(join(path, f))]
@@ -159,12 +169,13 @@ extra_dependencies are just in case you dont want to check anything and you just
 """
 class Build():
     
-    def __init__(self,build:list[str],dependencies:list[str],command: str,extra_dependencies:list[str]=[],show_command=True):
+    def __init__(self,build:list[str],dependencies:list[str],command: str,extra_dependencies:list[str]=[],show_command=True,dependency_file=False):
         self.build:list[str]=build
         self.dependencies:list[str]=dependencies
         self.extra_dependencies:list[str]=extra_dependencies
         self.command:str=command
         self.show_command=show_command
+        self.dependency_file=dependency_file
 
     #$?
     def check_on_extra(self,file:str)->bool:
@@ -178,6 +189,16 @@ class Build():
             if build_file_date<dependency_date or dependency_date==-1:
                 recompile=True  
         return recompile
+    def dependency_recompile(file:str)->bool:
+        extension=file.split(".")[-1]
+        dependencies=get_matches_from_d_file(file, f".{extension}")
+        file_date=get_date_file(file)
+        for d in dependencies:
+            dependency_date=get_date_file(d)
+            if dependency_date> file_date or dependency_date==-1:
+                #we have to recompile HOLY SHIT AAAAAA
+                return True
+        return False
     # $^
     def compile_all(self,file:str,builder)->bool:
         build_file_date=get_date_file(file)
@@ -202,8 +223,11 @@ class Build():
     def compile(self,builder)->int:
         total_compiled=0
         for (i,bf) in enumerate(self.build):
+            # bf-> before file
             build_command=self.command.replace("$@",bf).replace("$?"," ".join(self.extra_dependencies))
             recompile=self.check_on_extra(bf)
+            if self.dependency_file:
+                recompile|=self.dependency_recompile(bf)
             if "$^" in build_command: #all dependencies will be passed into our file
                 build_command=build_command.replace("$^"," ".join(self.dependencies))
                 recompile|=self.compile_all(bf,builder)
@@ -227,9 +251,9 @@ class Builder:
         if b==None:
             return
         b.compile(self)
-    def watch(self,build:list[str],need:list[str],command:str,extra_dependencies:list[str]=[],show_command=True):
+    def watch(self,build:list[str],need:list[str],command:str,extra_dependencies:list[str]=[],show_command=True,dependency_file=False):
         build_list=build
-        self.queue_builds.append(Build(build,need,command,extra_dependencies=extra_dependencies,show_command=True))
+        self.queue_builds.append(Build(build,need,command,extra_dependencies=extra_dependencies,show_command=show_command,dependency_file=dependency_file))
     def compile_all(self):
         total_compiled=sum([b.compile(self) for b in reversed(self.queue_builds)])
         if total_compiled is 0:
