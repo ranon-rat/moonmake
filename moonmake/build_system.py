@@ -263,9 +263,8 @@ class Build():
                  total_compiled += future.result()
                  
         except :
-         print("Interrupción detectada! Terminando workers...")
-         executor.shutdown(wait=False, cancel_futures=True)
-         return 0
+            executor.shutdown(wait=False, cancel_futures=True)
+            return 0
     
         return total_compiled
 
