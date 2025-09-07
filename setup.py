@@ -7,7 +7,7 @@ long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="moonmake",
-    version="0.1.53",
+    version="0.1.531",
     packages=find_packages(),
     entry_points={
         "console_scripts": [

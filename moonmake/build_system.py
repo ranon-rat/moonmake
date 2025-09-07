@@ -250,7 +250,8 @@ class Build():
     def compile(self, builder) -> int:
         total_compiled = 0
         bound_iterations = partial(self.iteration, builder)
-    
+        if len(self.build)==0:
+            return 0 
         try:
          with ThreadPoolExecutor(max_workers=len(self.build)) as executor:
              # Submit all tasks
@@ -261,7 +262,7 @@ class Build():
              for future in as_completed(futures):
                  total_compiled += future.result()
                  
-        except KeyboardInterrupt:
+        except :
          print("Interrupción detectada! Terminando workers...")
          executor.shutdown(wait=False, cancel_futures=True)
          return 0
