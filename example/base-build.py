@@ -99,6 +99,7 @@ def execute():
         target_bin, 
         target_obj, 
         f"g++ $< -o $@ {COMPILER_FLAGS} {LINK_FLAGS} {STATIC_LIBRARY} -l{PROJECT_NAME}",
+        extra_dependencies=[lib_static]
     )
     
     # Rule to compile target object files

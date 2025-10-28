@@ -125,15 +125,15 @@ def get_date_file(path:str)->float:
 # then we need to verify if something contains this
 def execute_command(command:str,show_command=True,cwd="."):
     command=command.replace("\\","/")
-    if command is "":return 
+    if command == "":return 
     f=lambda x: x
     if show_command:
         f=lambda x: print(x)    
     result=subprocess.run(command,capture_output=True, text=True,shell=True,cwd=cwd)
-    if result.stderr is not "":
+    if result.stderr != "":
         f(f"{command}\n{result.stderr}")
         exit()
-    if result.stdout is not "":
+    if result.stdout != "":
         f(result.stdout)
     f(command)
 
@@ -186,15 +186,18 @@ class Build():
     #$?
     def check_on_extra(self,file:str)->bool:
         build_file_date=get_date_file(file)
-        recompile=build_file_date==-1      
+        if build_file_date==-1:    
+            return True
+        if len(self.extra_dependencies)==0:
+            return False
         for (i,d) in enumerate(self.extra_dependencies):
             dependency_date=get_date_file(d)
             if dependency_date==-1:
                print(f"{d} doesnt exists")
                exit()
-            if build_file_date<dependency_date or dependency_date==-1:
-                recompile=True  
-        return recompile
+            if build_file_date<dependency_date:
+                return True  
+        return False
     def dependency_recompile(self,file:str)->bool:
         try:
             extension=file.split(".")[-1]
@@ -239,11 +242,14 @@ class Build():
             build_command=build_command.replace("$^"," ".join(self.dependencies))
             recompile|=self.compile_all(bf,builder)
         if "$<" in build_command :# we need pass the argument of each index
-            build_command=build_command.replace("$<",self.dependencies[i])
-            recompile|=self.compile_each(bf,self.dependencies[i],builder)                
+            if i < len(self.dependencies):
+                build_command=build_command.replace("$<",self.dependencies[i])
+                recompile|=self.compile_each(bf,self.dependencies[i],builder)
+            else:
+                print(f"Warning: Index {i} out of range for dependencies in file {bf}")                
         if not recompile: return 0
         d=dirname(bf)
-        if d is not "":
+        if d != "":
             makedirs(d,exist_ok=True)        
         execute_command(build_command,show_command=self.show_command) 
         return 1
@@ -254,7 +260,9 @@ class Build():
             return 0 
         try:
          with ThreadPoolExecutor(max_workers=len(self.build)) as executor:
+            
              # Submit all tasks
+             
              futures = [executor.submit(bound_iterations, (i, task)) 
                        for i, task in enumerate(self.build)]
              
@@ -262,9 +270,10 @@ class Build():
              for future in as_completed(futures):
                  total_compiled += future.result()
                  
-        except :
+        except Exception as e:
+            print(f"Error during compilation: {e}")
             executor.shutdown(wait=False, cancel_futures=True)
-            return 0
+            return total_compiled
     
         return total_compiled
 
