@@ -9,6 +9,7 @@ from functools import partial
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import zipfile
+import tarfile
 import shutil
 import requests
 import subprocess
@@ -29,18 +30,44 @@ def find_real_root(path: str) -> str:
     if len(entries) == 1:
         return join(path, entries[0])
     return path
+def get_extension_from_body(body:requests.models.Response)->str:
+    if "octet-stream" in body.headers['Content-Type'].split('/')[-1]:
+        fname = re.findall("filename=(.+)", body.headers["Content-Disposition"])[0]
+        if "." in fname:
+            return fname.split(".")[-1]
+    ## i could also get it from the filename but for now lets leave it like this
+    return body.headers['Content-Type'].split('/')[-1]
+def safe_extension_file(extension:str):
+    match extension:
+        case "gz"|"tar":
+            return tarfile.TarFile
+        case "zip":
+            return zipfile.ZipFile
 
-def download_zip(url: str, output_dir: str, name: str):
+
+def download_zip(url: str, output_dir: str, name: str,extension:str):
+    
     body = requests.get(url)
+    if extension=="":
+        # aqui lo que deberia de hacer seria sacar directamente el nombre de aqui
+        extension=get_extension_from_body(body)
+    #i should have chosen a better name for this but whatever :/
     zip_dir = join(output_dir, "zips")
-    zip_path = join(zip_dir, f"{name}.zip")
+    # something to take into account is that not all fucking files are zip files
+
+    zip_path = join(zip_dir, f"{name}.{extension}")
     makedirs(zip_dir, exist_ok=True)
     with open(zip_path, "wb") as outfile:
         outfile.write(body.content)
 
     source_path = join(output_dir, "source", name)
     makedirs(source_path, exist_ok=True)
-    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+    
+    #TODO: SOLVE THIS LATER.
+    if extension in ["tar","gz"]:
+        pass
+        
+    with safe_extension_file(extension)(zip_path, 'r') as zip_ref:
         zip_ref.extractall(source_path)
 
 def copy_all_to(source_path: str, destiny_dir: str):
@@ -67,7 +94,7 @@ def find_deepest_dir_with_files(path: str) -> str:
             return root
     return path
 
-def download_dependency(url: str, name: str, target_dir: str, command: str = "", headers=["."], static_lib=["."], dlls=[]):
+def download_dependency(url: str, name: str, target_dir: str, command: str = "", headers=["."], static_lib=["."], dlls=[],extension_file=""):
     linkdir = join(target_dir, "links")
     makedirs(linkdir, exist_ok=True)
     link_path = join(linkdir, name)
@@ -86,7 +113,7 @@ def download_dependency(url: str, name: str, target_dir: str, command: str = "",
         linkfile.truncate()
 
     print(f"[DOWNLOADING] : {name}")
-    download_zip(url, target_dir, name)
+    download_zip(url, target_dir, name,extension_file)
 
     source_root = join(target_dir, "source", name)
     real_source_path = find_deepest_dir_with_files(source_root)  # NEW
