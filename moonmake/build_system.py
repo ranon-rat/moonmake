@@ -39,18 +39,20 @@ def get_extension_from_body(body:requests.models.Response)->str:
     return body.headers['Content-Type'].split('/')[-1]
 def safe_extension_file(extension:str):
     match extension:
-        case "gz"|"tar":
-            return tarfile.TarFile
+        case "tar.gz"|"gz":
+            return lambda path: tarfile.open(path, "r:gz")
+        case "tar":
+            return lambda path: tarfile.open(path, "r:")
         case "zip":
-            return zipfile.ZipFile
-
+            return lambda path: zipfile.open(path, "r")
 
 def download_zip(url: str, output_dir: str, name: str,extension:str):
-    
     body = requests.get(url)
     if extension=="":
         # aqui lo que deberia de hacer seria sacar directamente el nombre de aqui
         extension=get_extension_from_body(body)
+    if extension=="gz":
+        extension="tar.gz"
     #i should have chosen a better name for this but whatever :/
     zip_dir = join(output_dir, "zips")
     # something to take into account is that not all fucking files are zip files
@@ -62,12 +64,8 @@ def download_zip(url: str, output_dir: str, name: str,extension:str):
 
     source_path = join(output_dir, "source", name)
     makedirs(source_path, exist_ok=True)
-    
-    #TODO: SOLVE THIS LATER.
-    if extension in ["tar","gz"]:
-        pass
-        
-    with safe_extension_file(extension)(zip_path, 'r') as zip_ref:
+            
+    with safe_extension_file(extension)(zip_path) as zip_ref:
         zip_ref.extractall(source_path)
 
 def copy_all_to(source_path: str, destiny_dir: str):
