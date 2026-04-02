@@ -51,8 +51,6 @@ def download_zip(url: str, output_dir: str, name: str,extension:str):
     if extension=="":
         # aqui lo que deberia de hacer seria sacar directamente el nombre de aqui
         extension=get_extension_from_body(body)
-    if extension=="gz":
-        extension="tar.gz"
     #i should have chosen a better name for this but whatever :/
     zip_dir = join(output_dir, "zips")
     # something to take into account is that not all fucking files are zip files
