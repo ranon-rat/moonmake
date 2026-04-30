@@ -44,7 +44,7 @@ def safe_extension_file(extension:str):
         case "tar":
             return lambda path: tarfile.open(path, "r:")
         case "zip":
-            return lambda path: zipfile.open(path, "r")
+            return lambda path: zipfile.ZipFile (path, "r")
 
 def download_zip(url: str, output_dir: str, name: str,extension:str):
     body = requests.get(url)
@@ -54,7 +54,6 @@ def download_zip(url: str, output_dir: str, name: str,extension:str):
     #i should have chosen a better name for this but whatever :/
     zip_dir = join(output_dir, "zips")
     # something to take into account is that not all fucking files are zip files
-
     zip_path = join(zip_dir, f"{name}.{extension}")
     makedirs(zip_dir, exist_ok=True)
     with open(zip_path, "wb") as outfile:
@@ -83,14 +82,23 @@ def generate_key(url: str, command: str, headers: list[str], static_lib: str, dl
     return f"{command}-{url}-{".".join(headers)}-{static_lib}-{".".join(dlls)}"
 
 
-def find_deepest_dir_with_files(path: str) -> str:
-    """Busca el subdirectorio más profundo que contiene archivos."""
-    for root, dirs, files in os.walk(path):
-        if files:
-            return root
-    return path
+def find_deepest_branch(path: str) -> str:
+    current = path
+    while True:
+        entries = os.listdir(current)
 
-def download_dependency(url: str, name: str, target_dir: str, command: str = "", headers=["."], static_lib=["."], dlls=[],extension_file=""):
+        dirs = [
+            e for e in entries
+            if os.path.isdir(os.path.join(current, e))
+        ]
+
+        if len(dirs) == 1:
+            current = os.path.join(current, dirs[0])
+            continue
+
+        return current
+
+def download_dependency(url: str, name: str, target_dir: str, command: str = "",real_source_path:str="", headers=["."], static_lib=["."], dlls=[],extension_file=""):
     linkdir = join(target_dir, "links")
     makedirs(linkdir, exist_ok=True)
     link_path = join(linkdir, name)
@@ -112,7 +120,13 @@ def download_dependency(url: str, name: str, target_dir: str, command: str = "",
     download_zip(url, target_dir, name,extension_file)
 
     source_root = join(target_dir, "source", name)
-    real_source_path = find_deepest_dir_with_files(source_root)  # NEW
+    print(source_root)
+    print(find_deepest_branch(source_root))
+    if real_source_path is not "":
+        real_source_path=join(target_dir,"source",name,real_source_path)
+    else:
+        real_source_path = find_deepest_branch(source_root)  # NEW
+    print()
 
     if command != "":
         execute_command(command, cwd=real_source_path)
@@ -121,7 +135,7 @@ def download_dependency(url: str, name: str, target_dir: str, command: str = "",
         print("TODO: add support to dll finding :)")
 
     # Buscar los archivos .a correctamente
-    static_libs = [join(real_source_path, f) for f in discover(real_source_path, ".a")]
+    static_libs = [join(source_root, f) for f in discover(source_root, ".a")]
     static_libs_names = [pathutils.split(i)[-1] for i in static_libs]
 
     for (i, f) in enumerate(static_libs):
@@ -169,7 +183,7 @@ src
  |-c.cpp
  |--a
    |-a.cpp
-   |-b.cpp
+   |-b.cpp`
 you will receive something like this
 a/a.cpp
 a/b.cpp
@@ -196,8 +210,10 @@ extra_dependencies are just in case you dont want to check anything and you just
  it doesnt need much, and its just a simple tool for managing the scripting part for our dependencies yk
  you can also configure everything you want here if you are bored or anything
 """
+
 class Build():
     
+
     def __init__(self,build:list[str],dependencies:list[str],command: str,extra_dependencies:list[str]=[],show_command=True,dependency_file=False):
         self.build:list[str]=build
         self.dependencies:list[str]=dependencies
@@ -285,14 +301,11 @@ class Build():
          with ThreadPoolExecutor(max_workers=len(self.build)) as executor:
             
              # Submit all tasks
-             
              futures = [executor.submit(bound_iterations, (i, task)) 
                        for i, task in enumerate(self.build)]
-             
              # Collect results as they complete
              for future in as_completed(futures):
                  total_compiled += future.result()
-                 
         except Exception as e:
             print(f"Error during compilation: {e}")
             executor.shutdown(wait=False, cancel_futures=True)

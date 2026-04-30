@@ -3,13 +3,13 @@ from os.path import join
 import sys
 import argparse
 
-BASE_MOONFILE="""#https://github.com/ranon-rat/moonmake
+BASE_MOONFILE=r"""#https://github.com/ranon-rat/moonmake
 import moonmake as mmake
 import platform
 import sys
 
 dir_path = mmake.get_dir(__file__)
-def join (*dir, separator="/"): return f"{separator}".join(dir).replace(r"\\","/")
+def join (*dir, separator="/"): return f"{separator}".join(dir).replace(r"\\\\","/")
 def get_raylib_url():
     #Determines the Raylib download URL based on the operating system
     system = platform.system()
