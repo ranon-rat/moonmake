@@ -119,14 +119,11 @@ def download_dependency(url: str, name: str, target_dir: str, command: str = "",
     print(f"[DOWNLOADING] : {name}")
     download_zip(url, target_dir, name,extension_file)
 
-    source_root = join(target_dir, "source", name)
-    print(source_root)
-    print(find_deepest_branch(source_root))
+    source_root = join(target_dir, "source", name)   
     if real_source_path is not "":
         real_source_path=join(target_dir,"source",name,real_source_path)
     else:
         real_source_path = find_deepest_branch(source_root)  # NEW
-    print()
 
     if command != "":
         execute_command(command, cwd=real_source_path)
